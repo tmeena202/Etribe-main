@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
 import contactImg from "../assets/contact-hero.jpg"; // Use your own image or replace with a placeholder
 import contactFormImg from "../assets/contact-form.jpg";
+import { toast } from "react-toastify";
 
 export default function Contact() {
   const [form, setForm] = useState({ name: "", email: "", message: "" });

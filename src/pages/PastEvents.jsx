@@ -7,6 +7,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import { toast } from 'react-toastify';
 
 
 // Helper to decode HTML entities
@@ -21,6 +22,42 @@ function stripHtml(html) {
   const div = document.createElement('div');
   div.innerHTML = html;
   return div.textContent || div.innerText || '';
+}
+
+// Helper to get CKEditor contentsCss based on dark mode
+function getCKEditorContentsCss() {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark
+    ? [
+        'https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/styles.css',
+        `
+        body, .ck-editor__editable, .ck-content {
+          background: #1a2233 !important;
+          color: #000 !important;
+        }
+        .ck.ck-editor__main > .ck-editor__editable:not(.ck-focused) {
+          background: #1a2233 !important;
+          color: #000 !important;
+        }
+        .ck-placeholder, .ck-content ::placeholder {
+          color: #000 !important;
+          opacity: 1 !important;
+        }
+        `
+      ]
+    : [
+        'https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/styles.css',
+        `
+        body, .ck-editor__editable, .ck-content {
+          background: #fff !important;
+          color: #111827 !important;
+        }
+        .ck-placeholder, .ck-content ::placeholder {
+          color: #111827 !important;
+          opacity: 1 !important;
+        }
+        `
+      ];
 }
 
 export default function PastEvents() {
@@ -42,21 +79,17 @@ export default function PastEvents() {
     invitationImage: null
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [saveLoading, setSaveLoading] = useState(false);
-  const [saveError, setSaveError] = useState(null);
-  const [saveSuccess, setSaveSuccess] = useState(null);
   const [imageError, setImageError] = useState(false);
   const [sortField, setSortField] = useState("datetime");
   const [sortDirection, setSortDirection] = useState("desc");
   const [formErrors, setFormErrors] = useState({});
   const [showAddEventForm, setShowAddEventForm] = useState(false);
-  const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message: string }
 
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
-      setError(null);
+      // toast.dismiss();
       try {
         const token = localStorage.getItem('token');
         const uid = localStorage.getItem('uid');
@@ -99,12 +132,14 @@ export default function PastEvents() {
         }));
         setEvents(mappedEvents);
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch past events');
+        toast.error('Failed to fetch past events');
       } finally {
         setLoading(false);
       }
     };
     fetchEvents();
+    // Removed setInterval polling
+    // Only call fetchEvents after CRUD operations
   }, []);
 
   // Filtered, sorted and paginated data
@@ -194,14 +229,12 @@ export default function PastEvents() {
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-      setNotification({ type: 'error', message: Object.values(errors).join('\n') });
+      toast.error(Object.values(errors).join('\n'));
       setShowAddEventForm(false);
-      setTimeout(() => setNotification(null), 3000);
+      setTimeout(() => toast.dismiss(), 3000);
       return;
     }
     setSaveLoading(true);
-    setSaveError(null);
-    setSaveSuccess(null);
     try {
       const token = localStorage.getItem('token');
       const uid = localStorage.getItem('uid');
@@ -227,7 +260,7 @@ export default function PastEvents() {
         credentials: 'include',
         body: formData,
       });
-      setSaveSuccess('Event added successfully!');
+      toast.success('Event added successfully!');
       setAddEventForm({
         event: "",
         agenda: "",
@@ -238,15 +271,11 @@ export default function PastEvents() {
         sendReminderTo: "Only Approved Members",
         invitationImage: null
       });
-      setTimeout(() => setSaveSuccess(null), 3000);
       setShowAddEventForm(false);
-      setNotification({ type: 'success', message: 'Event added successfully!' });
-      setTimeout(() => setNotification(null), 3000);
+      setTimeout(() => toast.dismiss(), 3000);
     } catch (err) {
-      setSaveError('Failed to add event');
+      toast.error('Failed to add event');
       setShowAddEventForm(false);
-      setNotification({ type: 'error', message: 'Failed to add event' });
-      setTimeout(() => setNotification(null), 3000);
     } finally {
       setSaveLoading(false);
     }
@@ -280,6 +309,7 @@ export default function PastEvents() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.success('Events exported to CSV!');
   };
 
   const handleExportExcel = () => {
@@ -295,6 +325,7 @@ export default function PastEvents() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Past Events");
     XLSX.writeFile(wb, "past_events.xlsx");
+    toast.success('Events exported to Excel!');
   };
 
   const handleExportPDF = () => {
@@ -322,6 +353,7 @@ export default function PastEvents() {
         headStyles: { fillColor: [41, 128, 185] }
       });
       doc.save("past_events.pdf");
+      toast.success('Events exported to PDF!');
     } catch (err) {
       alert("PDF export failed: " + err.message);
     }
@@ -332,6 +364,7 @@ export default function PastEvents() {
       `${e.event},${e.agenda},${e.venue},${e.datetime ? new Date(e.datetime).toLocaleString() : ""}`
     ).join('\n');
     navigator.clipboard.writeText(data);
+    toast.success('Event copied to clipboard!');
   };
 
   const handleRefresh = () => {
@@ -351,31 +384,23 @@ export default function PastEvents() {
     );
   }
 
-  if (error) {
-    return (
-      <DashboardLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-red-500">{error}</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-4 py-3">
+      <div className="flex flex-col gap-4 py-3 px-2 sm:px-4">
+        {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-orange-600">Past Events</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-orange-600">Past Events</h1>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <FiArchive className="text-indigo-600" />
             <span>Total Past Events: {events.length}</span>
           </div>
         </div>
 
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 max-w-7xl w-full mx-auto border border-gray-200 dark:border-gray-700">
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto border border-gray-200 dark:border-gray-700">
           {/* Header Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+            {/* Title and Description */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex items-center gap-2">
                 <FiArchive className="text-indigo-600 text-xl" />
                 <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">Past Event Management</span>
@@ -387,14 +412,15 @@ export default function PastEvents() {
               </div>
             </div>
 
-            <div className="flex gap-2 items-center">
+            {/* Export and Action Buttons */}
+            <div className="flex flex-wrap gap-2 items-center">
               <button
                 className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
                 onClick={handleExportCSV}
                 title="Export to CSV"
               >
                 <FiFileText />
-                CSV
+                <span className="hidden sm:inline">CSV</span>
               </button>
               <button
                 className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition"
@@ -402,7 +428,7 @@ export default function PastEvents() {
                 title="Export to Excel"
               >
                 <FiFile />
-                Excel
+                <span className="hidden sm:inline">Excel</span>
               </button>
               <button
                 className="flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition"
@@ -410,7 +436,7 @@ export default function PastEvents() {
                 title="Export to PDF"
               >
                 <FiFile />
-                PDF
+                <span className="hidden sm:inline">PDF</span>
               </button>
               <button
                 className="flex items-center gap-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition"
@@ -418,7 +444,7 @@ export default function PastEvents() {
                 title="Copy to Clipboard"
               >
                 <FiCopy />
-                Copy
+                <span className="hidden sm:inline">Copy</span>
               </button>
               <button
                 className="flex items-center gap-1 bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-600 transition"
@@ -426,20 +452,20 @@ export default function PastEvents() {
                 title="Refresh Events"
               >
                 <FiRefreshCw />
-                Refresh
+                <span className="hidden sm:inline">Refresh</span>
               </button>
-            <button
-                className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
+              <button
+                className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition w-full sm:w-auto justify-center"
                 onClick={handleShowAddEventForm}
-            >
+              >
                 <FiPlus />
                 Add Event
-            </button>
+              </button>
             </div>
           </div>
 
           {/* Search and Filter */}
-          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+          <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 relative">
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -458,8 +484,8 @@ export default function PastEvents() {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
+          {/* Table - Desktop View */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 text-gray-700 dark:text-gray-200 sticky top-0 z-10 shadow-sm">
                 <tr className="border-b-2 border-indigo-200 dark:border-indigo-800">
@@ -516,81 +542,135 @@ export default function PastEvents() {
                       <button className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 p-2 rounded-full hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors" title="View Event" onClick={() => openViewEventModal(idx)}>
                         <FiEye size={18} />
                       </button>
-                      </td>
-                    </tr>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {/* Pagination */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 border-t border-gray-100 dark:border-gray-700">
-              <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Show</span>
-                <select
-                className="border rounded-lg px-3 py-1 text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 text-gray-700 focus:ring-2 focus:ring-indigo-400 transition-colors"
-                  value={entriesPerPage}
-                  onChange={handleEntriesChange}
-                >
-                  {[5, 10, 25, 50, 100].map(num => (
-                    <option key={num} value={num}>{num}</option>
-                  ))}
-                </select>
-              <span className="text-sm text-gray-600 dark:text-gray-400">entries per page</span>
-              </div>
+          {/* Mobile Cards View */}
+          <div className="lg:hidden p-4 sm:p-6 space-y-4">
+            {paginated.map((event, idx) => (
+              <div key={event.id || idx} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-gray-500 to-gray-600 dark:from-indigo-800 dark:to-purple-900 flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-medium text-white">
+                        {event.event.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{event.event}</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Past Event #{startIdx + idx + 1}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-400 transition-colors p-1" 
+                      onClick={() => openViewEventModal(idx)}
+                      title="View Event Details"
+                    >
+                      <FiEye size={16} />
+                    </button>
+                  </div>
+                </div>
                 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePrev}
-                  disabled={currentPage === 1}
-                className={`px-3 py-1 rounded-lg text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors ${
-                    currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <FiMapPin className="text-gray-400 flex-shrink-0" size={14} />
+                    <span className="text-gray-700 dark:text-gray-300 truncate">{event.venue}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <FiClock className="text-gray-400 flex-shrink-0" size={14} />
+                    <span className="text-gray-700 dark:text-gray-300">
+                      {event.datetime ? new Date(event.datetime).toLocaleString() : "TBD"}
+                    </span>
+                  </div>
+                  <div className="pt-2">
+                    <p className="text-gray-600 dark:text-gray-400 text-xs line-clamp-2">
+                      {stripHtml(event.agenda).slice(0, 100)}...
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-400">
+                <span>Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, filtered.length)} of {filtered.length} results</span>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-700 dark:text-gray-400">Show</span>
+                  <select
+                    className="border rounded-lg px-3 py-1 text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 text-gray-700 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                    value={entriesPerPage}
+                    onChange={handleEntriesChange}
+                  >
+                    {[5, 10, 25, 50, 100].map(num => (
+                      <option key={num} value={num}>{num}</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-700 dark:text-gray-400">entries</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handlePrev}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1 rounded-lg text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors ${
+                      currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
-                  title="Previous"
+                    title="Previous"
                   >
                     Previous
-                </button>
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                  </button>
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                     Page {currentPage} of {totalPages}
                   </span>
-                <button
-                  onClick={handleNext}
-                  disabled={currentPage === totalPages}
-                className={`px-3 py-1 rounded-lg text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors ${
-                    currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
+                  <button
+                    onClick={handleNext}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1 rounded-lg text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors ${
+                      currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
-                  title="Next"
+                    title="Next"
                   >
                     Next
-                </button>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Add Event Modal */}
         {showAddEventForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-2xl mx-4 relative max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-1" onClick={handleHideAddEventForm}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-2 max-h-[98vh] flex flex-col" onClick={e => e.stopPropagation()}>
               <button
-                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors z-10 p-1"
                 onClick={handleHideAddEventForm}
                 title="Close"
               >
-                <FiX size={24} />
+                <FiX size={18} />
               </button>
               
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-indigo-700 flex items-center gap-2">
+              <div className="p-4 pb-2 pr-10">
+                <h2 className="text-lg font-bold text-indigo-700 flex items-center gap-2">
                   <FiPlus className="text-indigo-600" />
                   Add New Event
                 </h2>
-                <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">Create a new past event with details, venue, and schedule</p>
+                <p className="text-gray-600 dark:text-gray-300 text-xs mt-1">Create a new past event with details</p>
               </div>
               
-              <form className="space-y-6" onSubmit={handleAddEventSubmit}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <form className="flex-1 flex flex-col" onSubmit={handleAddEventSubmit}>
+                <div className="flex-1 overflow-y-auto px-4 space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Event Name <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -598,7 +678,7 @@ export default function PastEvents() {
                       name="event"
                       value={addEventForm.event}
                       onChange={handleAddEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-colors ${formErrors.event ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                      className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-colors ${formErrors.event ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                       placeholder="Enter event name"
                     />
                     {formErrors.event && (
@@ -607,7 +687,7 @@ export default function PastEvents() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Venue <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -615,7 +695,7 @@ export default function PastEvents() {
                       name="venue"
                       value={addEventForm.venue}
                       onChange={handleAddEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-colors ${formErrors.venue ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                      className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-colors ${formErrors.venue ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
                       placeholder="Enter venue"
                     />
                     {formErrors.venue && (
@@ -623,64 +703,69 @@ export default function PastEvents() {
                     )}
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={addEventForm.date}
-                      onChange={handleAddEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-colors ${formErrors.date ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Select date"
-                    />
-                    {formErrors.date && (
-                      <div className="text-red-600 text-xs mt-1">{formErrors.date}</div>
-                    )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="date"
+                        value={addEventForm.date}
+                        onChange={handleAddEventChange}
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-colors ${formErrors.date ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                        placeholder="Select date"
+                      />
+                      {formErrors.date && (
+                        <div className="text-red-600 text-xs mt-1">{formErrors.date}</div>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Time <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        name="time"
+                        value={addEventForm.time}
+                        onChange={handleAddEventChange}
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-colors ${formErrors.time ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                        placeholder="Select time"
+                      />
+                      {formErrors.time && (
+                        <div className="text-red-600 text-xs mt-1">{formErrors.time}</div>
+                      )}
+                    </div>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Time <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      name="time"
-                      value={addEventForm.time}
-                      onChange={handleAddEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-colors ${formErrors.time ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Select time"
-                    />
-                    {formErrors.time && (
-                      <div className="text-red-600 text-xs mt-1">{formErrors.time}</div>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Image URL
                     </label>
                     <input
                       type="file"
                       name="invitationImage"
                       onChange={handleAddEventChange}
-                      className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-colors"
+                      className="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-colors"
                       accept="image/*"
                     />
                   </div>
                   
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Agenda <span className="text-red-500">*</span>
                     </label>
-                    <div className={`rounded-lg p-1 bg-white dark:bg-gray-700 dark:text-gray-100 ${formErrors.agenda ? 'border border-red-500' : ''}`}>
+                    <div className={`rounded-lg p-1 bg-white dark:bg-gray-700 dark:text-gray-700 ${formErrors.agenda ? 'border border-red-500' : ''}`}>
                       <CKEditor
                         editor={ClassicEditor}
                         data={addEventForm.agenda}
                         onChange={handleAgendaChange}
                         config={{
                           placeholder: 'Describe the event agenda and details',
+                          contentsCss: getCKEditorContentsCss(),
+                          toolbar: ['bold', 'italic', 'bulletedList', 'numberedList'],
+                          height: '120px',
                         }}
                       />
                     </div>
@@ -689,23 +774,10 @@ export default function PastEvents() {
                     )}
                   </div>
                 </div>
-                
-                {saveError && (
-                  <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg">
-                    {saveError}
-                  </div>
-                )}
-                
-                {saveSuccess && (
-                  <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 px-4 py-3 rounded-lg">
-                    {saveSuccess}
-                  </div>
-                )}
-                
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <div className="flex gap-2 p-4 pt-2 border-t border-gray-200 dark:border-gray-700">
                   <button
                     type="button"
-                    className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                    className="flex-1 px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                     onClick={handleHideAddEventForm}
                   >
                     Cancel
@@ -713,7 +785,7 @@ export default function PastEvents() {
                   <button
                     type="submit"
                     disabled={saveLoading}
-                    className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors ${
+                    className={`flex-1 flex items-center justify-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       saveLoading 
                         ? 'bg-gray-400 cursor-not-allowed text-white' 
                         : 'bg-green-600 text-white hover:bg-green-700'
@@ -721,12 +793,12 @@ export default function PastEvents() {
                   >
                     {saveLoading ? (
                       <>
-                        <FiRefreshCw className="animate-spin" />
+                        <FiRefreshCw className="animate-spin" size={14} />
                         Adding...
                       </>
                     ) : (
                       <>
-                        <FiPlus />
+                        <FiPlus size={14} />
                         Add Event
                       </>
                     )}
@@ -808,31 +880,7 @@ export default function PastEvents() {
           </div>
         )}
       </div>
-      {notification && (
-  <div
-    style={{
-      position: 'fixed',
-      bottom: 24,
-      right: 24,
-      zIndex: 9999,
-      minWidth: 240,
-      maxWidth: 360,
-      padding: '16px 24px',
-      borderRadius: 8,
-      background: notification.type === 'success' ? '#22c55e' : '#ef4444',
-      color: 'white',
-      fontWeight: 600,
-      boxShadow: '0 2px 16px 0 rgba(0,0,0,0.15)',
-      letterSpacing: 0.2,
-      fontSize: 16,
-      textAlign: 'center',
-      transition: 'opacity 0.3s',
-    }}
-    role="alert"
-  >
-    {notification.message}
-  </div>
-)}
+      {/* Removed custom notification UI */}
     </DashboardLayout>
   );
 }

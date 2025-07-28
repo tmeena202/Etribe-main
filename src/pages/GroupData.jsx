@@ -4,6 +4,7 @@ import etribeLogo from "../assets/Etribe-logo.jpg";
 import defaultSignature from "../assets/company-logo/parent.jpg";
 import { FiEdit2, FiX, FiUpload, FiCheckCircle } from "react-icons/fi";
 import api from "../api/axiosConfig";
+import { toast } from 'react-toastify';
 
 const initialData = {};
 
@@ -65,7 +66,7 @@ export default function GroupData() {
           setSignaturePreview(mappedData.signature);
         }
       } catch (err) {
-        if (isMounted) setError(err.response?.data?.message || 'Failed to fetch group data');
+        if (isMounted) toast.error('Failed to fetch group data.');
       } finally {
         if (showLoading && isMounted) setLoading(false);
       }
@@ -128,10 +129,9 @@ export default function GroupData() {
         setForm((prev) => ({ ...prev, logo: logoUrl }));
         setData((prev) => ({ ...prev, logo: logoUrl }));
       }
-      setSaveSuccess('Logo updated successfully!');
-      setTimeout(() => setSaveSuccess(null), 2000);
+      toast.success('Logo uploaded successfully!');
     } catch (err) {
-      setSaveError(err.response?.data?.message || 'Failed to upload logo');
+      toast.error('Failed to upload logo.');
     } finally {
       setSaveLoading(false);
     }
@@ -181,10 +181,9 @@ export default function GroupData() {
         setForm((prev) => ({ ...prev, signature: signatureUrl }));
         setData((prev) => ({ ...prev, signature: signatureUrl }));
       }
-      setSaveSuccess('Signature updated successfully!');
-      setTimeout(() => setSaveSuccess(null), 2000);
+      toast.success('Signature uploaded successfully!');
     } catch (err) {
-      setSaveError(err.response?.data?.message || 'Failed to upload signature');
+      toast.error('Failed to upload signature.');
     } finally {
       setSaveLoading(false);
     }
@@ -210,7 +209,7 @@ export default function GroupData() {
     console.log('Save button clicked', form);
     setSaveLoading(true);
     setSaveError(null);
-    setSaveSuccess(null);
+    // No need to clear error/success with toast
     
     try {
       const token = localStorage.getItem('token');
@@ -246,13 +245,13 @@ export default function GroupData() {
 
     setData(form);
     setEditMode(false);
-      setSaveSuccess('Group data updated successfully!');
+      toast.success('Group data updated successfully!');
       setTimeout(() => {
-        setSaveSuccess(null);
+        toast.success(null);
       }, 3000);
     } catch (err) {
       console.error('Save group data error:', err);
-      setSaveError(err.response?.data?.message || 'Failed to save group data');
+      toast.error('Failed to update group data.');
     } finally {
       setSaveLoading(false);
     }
@@ -260,35 +259,35 @@ export default function GroupData() {
 
   return (
     <DashboardLayout>
-      <div className="relative w-full flex flex-col md:flex-row gap-8 items-start">
+      <div className="relative w-full flex flex-col lg:flex-row gap-6 lg:gap-8 items-start px-2 sm:px-4">
           {/* Floating Edit Button */}
           {!editMode && (
               <button
-            className="absolute top-0 right-0 p-2 rounded-full bg-indigo-50 dark:bg-gray-700 text-indigo-600 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-gray-600 hover:text-indigo-800 dark:hover:text-indigo-100 shadow transition"
+            className="absolute top-0 right-0 p-2 rounded-full bg-indigo-50 dark:bg-gray-700 text-indigo-600 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-gray-600 hover:text-indigo-800 dark:hover:text-indigo-100 shadow transition z-10"
                 onClick={handleEdit}
               disabled={loading}
               title="Edit Profile"
               >
-              <FiEdit2 size={22} />
+              <FiEdit2 size={20} className="sm:w-6 sm:h-6" />
               </button>
           )}
 
           {/* Left: Logo and Signature */}
-        <div className="flex flex-col items-center gap-6 min-w-[220px] w-full md:w-[220px]">
+        <div className="flex flex-col items-center gap-4 sm:gap-6 w-full lg:w-[220px] lg:min-w-[220px]">
             <div className="relative">
               <img
                 src={logoPreview}
                 alt="Admin Logo"
-              className="w-28 h-28 rounded-full object-cover border-2 border-gray-300 dark:border-gray-700 shadow-md bg-gray-100 dark:bg-gray-800"
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-2 border-gray-300 dark:border-gray-700 shadow-md bg-gray-100 dark:bg-gray-800"
               />
         {editMode && (
                       <button
                         type="button"
-                  className="absolute bottom-2 right-2 bg-indigo-600 text-white p-2 rounded-full shadow hover:bg-indigo-700"
+                  className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 bg-indigo-600 text-white p-1.5 sm:p-2 rounded-full shadow hover:bg-indigo-700"
                         onClick={() => logoInputRef.current.click()}
                   title="Change Logo"
                       >
-                        <FiUpload size={16} />
+                        <FiUpload size={14} className="sm:w-4 sm:h-4" />
                       </button>
               )}
                       <input
@@ -303,16 +302,16 @@ export default function GroupData() {
                       <img
                         src={signaturePreview}
                 alt="Signature"
-              className="w-40 h-14 object-contain rounded-lg border-2 border-gray-300 dark:border-gray-700 shadow-md bg-gray-100 dark:bg-gray-800"
+              className="w-32 h-12 sm:w-40 sm:h-14 object-contain rounded-lg border-2 border-gray-300 dark:border-gray-700 shadow-md bg-gray-100 dark:bg-gray-800"
                       />
               {editMode && (
                       <button
                         type="button"
-                  className="absolute bottom-2 right-2 bg-indigo-600 text-white p-2 rounded-full shadow hover:bg-indigo-700"
+                  className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 bg-indigo-600 text-white p-1.5 sm:p-2 rounded-full shadow hover:bg-indigo-700"
                         onClick={() => signatureInputRef.current.click()}
                   title="Change Signature"
                       >
-                        <FiUpload size={16} />
+                        <FiUpload size={14} className="sm:w-4 sm:h-4" />
                       </button>
               )}
                       <input
@@ -324,7 +323,7 @@ export default function GroupData() {
                       />
                     </div>
             <div className="text-center">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{data.name}</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{data.name}</h2>
             <div className="text-sm text-gray-500 dark:text-gray-300 font-medium">{data.signatureDesignation || 'Administrator'}</div>
             <div className="text-sm text-gray-400 dark:text-gray-400">{data.email}</div>
             <span className="text-xs text-gray-400 dark:text-gray-400 italic mt-1 block">{data.signatureName}, {data.signatureDesignation}</span>
@@ -352,33 +351,9 @@ export default function GroupData() {
                 <FiCheckCircle /> {saveSuccess}
               </div>
             )}
-            {/* Floating Toast Notification */}
-            {(saveSuccess || saveError) && (
-              <div
-                style={{
-                  position: 'fixed',
-                  bottom: 24,
-                  right: 24,
-                  zIndex: 9999,
-                  minWidth: 240,
-                  maxWidth: 360,
-                  padding: '16px 24px',
-                  borderRadius: 8,
-                  background: saveSuccess ? '#22c55e' : '#ef4444',
-                  color: 'white',
-                  fontWeight: 600,
-                  boxShadow: '0 2px 16px 0 rgba(0,0,0,0.15)',
-                  letterSpacing: 0.2,
-                  fontSize: 16,
-                  textAlign: 'center',
-                  transition: 'opacity 0.3s',
-                }}
-                role="alert"
-              >
-                {saveSuccess || saveError}
-              </div>
-            )}
-            <div className="overflow-x-auto">
+            
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
             <table className="min-w-full border border-gray-200 dark:border-gray-700 rounded-xl">
                 <tbody>
                   {[
@@ -412,9 +387,44 @@ export default function GroupData() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile Cards View */}
+            <div className="lg:hidden space-y-4">
+              {[
+                { label: 'Contact No', key: 'contact' },
+                { label: 'Address', key: 'address' },
+                { label: 'City', key: 'city' },
+                { label: 'Pincode', key: 'pincode' },
+                { label: 'Country', key: 'country' },
+                { label: 'State', key: 'state' },
+                { label: 'Signature Name', key: 'signatureName' },
+                { label: 'Signature Designation', key: 'signatureDesignation' },
+              ].map(({ label, key }) => (
+                <div key={key} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">{label}</h3>
+                      {!editMode ? (
+                        <p className="text-gray-900 dark:text-gray-100 text-base">{data[key] || 'Not specified'}</p>
+                      ) : (
+                        <input
+                          type="text"
+                          name={key}
+                          value={form[key]}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 text-sm"
+                          placeholder={`Enter ${label.toLowerCase()}`}
+                          required
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
             {/* Save/Cancel Buttons in Edit Mode */}
             {editMode && (
-            <form onSubmit={handleSubmit} className="flex justify-end gap-4 mt-6">
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6">
                 <button
                   type="button"
                 className="px-6 py-2 rounded-lg font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
@@ -427,7 +437,7 @@ export default function GroupData() {
                   className="px-8 py-2 rounded-lg font-semibold bg-indigo-600 text-white shadow hover:bg-indigo-700 transition"
                 disabled={saveLoading}
                   >
-                    Save
+                    {saveLoading ? 'Saving...' : 'Save'}
                   </button>
             </form>
             )}

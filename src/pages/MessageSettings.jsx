@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
 import { FiEdit2, FiX, FiRefreshCw, FiSave, FiMessageSquare, FiAlertCircle, FiCheckCircle, FiSettings, FiLink } from "react-icons/fi";
 import api from "../api/axiosConfig";
+import { toast } from 'react-toastify';
 
 const initialData = {
   messageUrl: "",
@@ -15,7 +16,6 @@ export default function MessageSettings() {
   const [form, setForm] = useState(initialData);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message: string }
   const [docTypes, setDocTypes] = useState([]);
 
   // Fetch document types from API
@@ -47,7 +47,7 @@ export default function MessageSettings() {
   // Fetch message settings from API
   const fetchMessageSettings = async () => {
     setLoading(true);
-    setNotification(null);
+    // No need to clear error with toast
     try {
       const token = localStorage.getItem('token');
       const uid = localStorage.getItem('uid');
@@ -80,8 +80,7 @@ export default function MessageSettings() {
     } catch (err) {
       console.error('Fetch message settings error:', err);
       const errorMessage = err.message || 'Failed to fetch message settings';
-      setNotification({ type: 'error', message: errorMessage });
-      setTimeout(() => setNotification(null), 3000);
+      toast.error(errorMessage);
       
       if (errorMessage.toLowerCase().includes('token') || errorMessage.toLowerCase().includes('unauthorized') || errorMessage.toLowerCase().includes('log in')) {
         localStorage.removeItem('token');
@@ -148,15 +147,12 @@ export default function MessageSettings() {
   // Save message settings to API
   const saveMessageSettings = async (settingsData) => {
     setSubmitting(true);
-    setNotification(null);
+    // No need to clear error with toast
     try {
       // Validate settings before saving
       const validationErrors = validateSettings(settingsData);
       if (validationErrors.length > 0) {
-        setNotification({ type: 'error', message: validationErrors.join(', ') });
-        setTimeout(() => setNotification(null), 3000);
-        setSubmitting(false);
-        return;
+        throw new Error(validationErrors.join(', '));
       }
 
       const token = localStorage.getItem('token');
@@ -184,20 +180,14 @@ export default function MessageSettings() {
       if (response.data?.status === 'success') {
         // Update the data with new values
         setData(settingsData);
-        setNotification({ type: 'success', message: 'Message settings saved successfully!' });
-        setTimeout(() => setNotification(null), 3000);
+        toast.success('Message settings saved successfully!');
         return { success: true };
       } else {
-        setNotification({ type: 'error', message: response.data?.message || 'Failed to save message settings' });
-        setTimeout(() => setNotification(null), 3000);
-        setSubmitting(false);
-        return;
+        toast.error(response.data?.message || 'Failed to save message settings');
       }
     } catch (err) {
-      setNotification({ type: 'error', message: err.message });
-      setTimeout(() => setNotification(null), 3000);
-      setSubmitting(false);
-      return;
+      console.error('Save message settings error:', err);
+      toast.error(err.message);
     } finally {
       setSubmitting(false);
     }
@@ -217,12 +207,12 @@ export default function MessageSettings() {
   const handleEdit = () => {
     setForm(data);
     setEditMode(true);
-    setNotification(null);
+    // No need to clear error with toast
   };
 
   const handleCancel = () => {
     setEditMode(false);
-    setNotification(null);
+    // No need to clear error with toast
     // Reset form to current data
     setForm(data);
   };
@@ -233,11 +223,10 @@ export default function MessageSettings() {
     e.preventDefault();
     try {
       await saveMessageSettings(form);
-      setEditMode(false);
-      // Do NOT clear notification here; let the save function manage it
+    setEditMode(false);
+      // No need to clear error with toast
     } catch (err) {
-      setNotification({ type: 'error', message: err.message });
-      setTimeout(() => setNotification(null), 3000);
+      toast.error(err.message);
     }
   };
 
@@ -263,50 +252,22 @@ export default function MessageSettings() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-4 py-3">
+      <div className="flex flex-col gap-4 py-3 px-2 sm:px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-orange-600">Message Settings</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-orange-600">Message Settings</h1>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <FiMessageSquare className="text-indigo-600" />
             <span>Status: {isConfigured ? 'Configured' : 'Not Configured'}</span>
           </div>
         </div>
 
-        {/* Floating Toast Notification */}
-        {notification && (console.log('Toast:', notification), null)}
-        {notification && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 24,
-              right: 24,
-              zIndex: 9999,
-              minWidth: 240,
-              maxWidth: 360,
-              padding: '16px 24px',
-              borderRadius: 8,
-              background: notification.type === 'success' ? '#22c55e' : '#ef4444',
-              color: 'white',
-              fontWeight: 600,
-              boxShadow: '0 2px 16px 0 rgba(0,0,0,0.15)',
-              letterSpacing: 0.2,
-              fontSize: 16,
-              textAlign: 'center',
-              transition: 'opacity 0.3s',
-            }}
-            role="alert"
-          >
-            {notification.message}
-          </div>
-        )}
-
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 max-w-7xl w-full mx-auto border border-gray-200 dark:border-gray-700">
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto border border-gray-200 dark:border-gray-700">
           {/* Header Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-2">
-                <FiMessageSquare className="text-indigo-600 text-xl" />
-                <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">Message Configuration</span>
+                <FiMessageSquare className="text-indigo-600 text-lg sm:text-xl" />
+                <span className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-100">Message Configuration</span>
               </div>
               {!editMode && (
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
@@ -315,25 +276,32 @@ export default function MessageSettings() {
                 </div>
               )}
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-wrap gap-2 items-center">
             {!editMode && (
                 <>
-                  <button className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition" onClick={handleRefresh} disabled={loading} title="Refresh Settings"><FiRefreshCw className={loading ? "animate-spin" : ""} /> Refresh</button>
-                  <button className="flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition" onClick={handleEdit}><FiEdit2 /> Edit Settings</button>
+                  <button className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition" onClick={handleRefresh} disabled={loading} title="Refresh Settings">
+                    <FiRefreshCw className={loading ? "animate-spin" : ""} /> 
+                    <span className="hidden sm:inline">Refresh</span>
+                  </button>
+                  <button className="flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition w-full sm:w-auto justify-center" onClick={handleEdit}>
+                    <FiEdit2 /> 
+                    <span className="hidden sm:inline">Edit Settings</span>
+                    <span className="sm:hidden">Edit</span>
+                  </button>
                 </>
             )}
             </div>
           </div>
           
           {/* Content */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {loading ? (
               <div className="flex items-center justify-center h-32 text-indigo-700 dark:text-indigo-300">
                 <FiRefreshCw className="animate-spin text-indigo-600 dark:text-indigo-300 text-xl mr-2" />
                 Loading message settings...
                 </div>
             ) : !editMode ? (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Status Card */}
                 <div className={`p-4 rounded-lg border ${isConfigured ? 'bg-green-50 dark:bg-green-900/40 border-green-200 dark:border-green-700' : 'bg-yellow-50 dark:bg-yellow-900/40 border-yellow-200 dark:border-yellow-700'}`}>
                   <h3 className={`font-semibold mb-2 flex items-center gap-2 ${isConfigured ? 'text-green-700 dark:text-green-200' : 'text-yellow-700 dark:text-yellow-200'}`}>
@@ -345,16 +313,16 @@ export default function MessageSettings() {
                   </p>
                 </div>
                 {/* Settings Display */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                     <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
                       <FiLink className="text-indigo-600" />
                       API Configuration
                     </h3>
                     <div className="space-y-3">
-                      <div className="flex justify-between items-start">
-                        <span className="font-medium text-gray-600 dark:text-gray-300">Message URL</span>
-                        <span className="text-gray-800 dark:text-gray-100 font-mono text-sm text-right max-w-xs break-all">{data.messageUrl || "Not configured"}</span>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
+                        <span className="font-medium text-gray-600 dark:text-gray-300 text-sm sm:text-base">Message URL</span>
+                        <span className="text-gray-800 dark:text-gray-100 font-mono text-xs sm:text-sm break-all">{data.messageUrl || "Not configured"}</span>
                       </div>
                     </div>
                   </div>
@@ -364,13 +332,13 @@ export default function MessageSettings() {
                       Message Parameters
                     </h3>
                     <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-gray-600 dark:text-gray-300">Mobile No. Key</span>
-                        <span className="text-gray-800 dark:text-gray-100 font-mono text-sm">{data.mobileNoKey || "Not configured"}</span>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                        <span className="font-medium text-gray-600 dark:text-gray-300 text-sm sm:text-base">Mobile No. Key</span>
+                        <span className="text-gray-800 dark:text-gray-100 font-mono text-xs sm:text-sm break-all">{data.mobileNoKey || "Not configured"}</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-gray-600 dark:text-gray-300">Message Key</span>
-                        <span className="text-gray-800 dark:text-gray-100 font-mono text-sm">{data.messageKey || "Not configured"}</span>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                        <span className="font-medium text-gray-600 dark:text-gray-300 text-sm sm:text-base">Message Key</span>
+                        <span className="text-gray-800 dark:text-gray-100 font-mono text-xs sm:text-sm break-all">{data.messageKey || "Not configured"}</span>
                       </div>
                     </div>
                   </div>
@@ -387,7 +355,7 @@ export default function MessageSettings() {
                 )}
               </div>
             ) : (
-              <form className="space-y-6" onSubmit={handleSubmit}>
+              <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
                 {/* Form Header */}
                 <div className="bg-yellow-50 dark:bg-yellow-900/40 p-4 rounded-lg border border-yellow-200 dark:border-yellow-700">
                   <h3 className="font-semibold text-yellow-700 dark:text-yellow-200 mb-2 flex items-center gap-2">
@@ -397,17 +365,17 @@ export default function MessageSettings() {
                   <p className="text-yellow-700 dark:text-yellow-200 text-sm">Configure your SMS/WhatsApp API settings. Ensure all fields are properly configured for message functionality.</p>
                 </div>
                 {/* Form Fields */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-4">
                     <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                       <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
                         <FiLink className="text-indigo-600" />
                         API Configuration
                       </h3>
-                      <div className="space-y-4">
+                      <div className="space-y-3 sm:space-y-4">
                         <div>
-                          <label className="block text-gray-700 dark:text-gray-200 font-medium mb-2">Message URL</label>
-                          <input type="url" name="messageUrl" value={form.messageUrl} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors" placeholder="https://api.example.com/send-message" required disabled={submitting} />
+                          <label className="block text-gray-700 dark:text-gray-200 font-medium mb-1 sm:mb-2 text-sm sm:text-base">Message URL</label>
+                          <input type="url" name="messageUrl" value={form.messageUrl} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors text-sm" placeholder="https://api.example.com/send-message" required disabled={submitting} />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">The API endpoint URL for sending messages</p>
                         </div>
                       </div>
@@ -419,15 +387,15 @@ export default function MessageSettings() {
                         <FiMessageSquare className="text-indigo-600" />
                         Message Parameters
                       </h3>
-                      <div className="space-y-4">
+                      <div className="space-y-3 sm:space-y-4">
                         <div>
-                          <label className="block text-gray-700 dark:text-gray-200 font-medium mb-2">Mobile No. Key</label>
-                          <input type="text" name="mobileNoKey" value={form.mobileNoKey} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors" placeholder="mobile_number" required disabled={submitting} />
+                          <label className="block text-gray-700 dark:text-gray-200 font-medium mb-1 sm:mb-2 text-sm sm:text-base">Mobile No. Key</label>
+                          <input type="text" name="mobileNoKey" value={form.mobileNoKey} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors text-sm" placeholder="mobile_number" required disabled={submitting} />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">The parameter name for mobile number in API requests</p>
                 </div>
                         <div>
-                          <label className="block text-gray-700 dark:text-gray-200 font-medium mb-2">Message Key</label>
-                          <input type="text" name="messageKey" value={form.messageKey} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors" placeholder="msg_key_123456" required disabled={submitting} />
+                          <label className="block text-gray-700 dark:text-gray-200 font-medium mb-1 sm:mb-2 text-sm sm:text-base">Message Key</label>
+                          <input type="text" name="messageKey" value={form.messageKey} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors text-sm" placeholder="msg_key_123456" required disabled={submitting} />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">The parameter name for message content in API requests</p>
                         </div>
                       </div>
@@ -435,9 +403,9 @@ export default function MessageSettings() {
                   </div>
                 </div>
                 {/* Form Actions */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                   <button type="button" className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50" onClick={handleCancel} disabled={submitting}>Cancel</button>
-                  <button type="submit" className="flex items-center gap-2 px-6 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition-colors disabled:opacity-50" disabled={submitting}>{submitting ? (<><FiRefreshCw className="animate-spin" />Saving...</>) : (<><FiSave />Save Settings</>)}</button>
+                  <button type="submit" className="flex items-center justify-center gap-2 px-6 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition-colors disabled:opacity-50" disabled={submitting}>{submitting ? (<><FiRefreshCw className="animate-spin" />Saving...</>) : (<><FiSave />Save Settings</>)}</button>
                 </div>
               </form>
             )}

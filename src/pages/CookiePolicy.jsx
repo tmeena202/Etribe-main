@@ -1,6 +1,7 @@
 import React from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
 import policyImg from "../assets/privacy-policy.jpg";
+import { toast } from 'react-toastify';
 
 export default function CookiePolicy() {
   return (

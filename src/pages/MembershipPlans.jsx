@@ -3,6 +3,7 @@ import DashboardLayout from "../components/Layout/DashboardLayout";
 import { FiPlus, FiX, FiEdit2, FiTrash2, FiRefreshCw, FiSave, FiAlertCircle, FiCheckCircle, FiDollarSign, FiCalendar, FiPackage, FiSearch, FiFilter } from "react-icons/fi";
 import { BiRupee } from "react-icons/bi";
 import api from "../api/axiosConfig";
+import { toast } from 'react-toastify';
 
 export default function MembershipPlans() {
   const [plans, setPlans] = useState([]);
@@ -20,18 +21,14 @@ export default function MembershipPlans() {
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sortField, setSortField] = useState("name");
   const [sortDirection, setSortDirection] = useState("asc");
-  const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message: string }
 
   // Fetch membership plans from API
   const fetchPlans = async () => {
     setLoading(true);
-    setError(null);
     try {
       const token = localStorage.getItem('token');
       const uid = localStorage.getItem('uid');
@@ -69,7 +66,6 @@ export default function MembershipPlans() {
     } catch (err) {
       console.error('Fetch membership plans error:', err);
       const errorMessage = err.message || 'Failed to fetch membership plans';
-      setError(errorMessage);
       
       if (errorMessage.toLowerCase().includes('token') || errorMessage.toLowerCase().includes('unauthorized') || errorMessage.toLowerCase().includes('log in')) {
         localStorage.removeItem('token');
@@ -120,7 +116,6 @@ export default function MembershipPlans() {
   // Save membership plan to API
   const savePlan = async (planData) => {
     setSubmitting(true);
-    setError(null);
     try {
       // Validate plan before saving
       const validationErrors = validatePlan(planData);
@@ -179,15 +174,14 @@ export default function MembershipPlans() {
       if (response.data?.status === 'success') {
         // Refresh plans after successful save
         await fetchPlans();
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
+        toast.success('Membership plan saved successfully!');
         return { success: true };
       } else {
         throw new Error(response.data?.message || 'Failed to save membership plan');
       }
     } catch (err) {
       console.error('Save membership plan error:', err, err.response?.data);
-      setError(
+      toast.error(
         err.response?.data?.message ||
         err.response?.data?.error ||
         err.message ||
@@ -206,7 +200,6 @@ export default function MembershipPlans() {
     }
 
     setSubmitting(true);
-    setError(null);
     try {
       const token = localStorage.getItem('token');
       const uid = localStorage.getItem('uid');
@@ -227,14 +220,13 @@ export default function MembershipPlans() {
 
       if (response.data?.status === 'success') {
         await fetchPlans();
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
+        toast.success('Membership plan deleted successfully!');
       } else {
         throw new Error(response.data?.message || 'Failed to delete membership plan');
       }
     } catch (err) {
       console.error('Delete membership plan error:', err);
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setSubmitting(false);
     }
@@ -293,7 +285,7 @@ export default function MembershipPlans() {
     setAddMode(true);
     setEditMode(false);
     setEditingPlan(null);
-    setError(null);
+    // No need to clear error with toast
   };
 
   const handleEdit = (plan) => {
@@ -307,30 +299,20 @@ export default function MembershipPlans() {
     setEditMode(true);
     setAddMode(false);
     setEditingPlan(plan);
-    setError(null);
+    // No need to clear error with toast
   };
 
   const handleCancel = () => {
     setAddMode(false);
     setEditMode(false);
     setEditingPlan(null);
-    setError(null);
+    // No need to clear error with toast
   };
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Check for duplicate plan name (case-insensitive)
-    const duplicate = plans.some(
-      p => p.name.trim().toLowerCase() === form.name.trim().toLowerCase()
-    );
-    if (!editMode && duplicate) {
-      setError('A membership plan with this name already exists.');
-      setNotification({ type: 'error', message: 'A membership plan with this name already exists.' });
-      setTimeout(() => setNotification(null), 3000);
-      return;
-    }
     console.log('Save Plan button clicked', form);
     try {
       // Attach cURL logic directly here for edit
@@ -357,25 +339,14 @@ export default function MembershipPlans() {
         });
         if (response.data?.status === 'success' || (response.data?.message && response.data.message.toLowerCase().includes('success'))) {
           await fetchPlans();
-          setSuccess(response.data?.message || 'Membership plan saved successfully!');
-          setError(null);
-          setTimeout(() => setSuccess(false), 3000);
-          setAddMode(false);
-          setEditMode(false);
-          setEditingPlan(null);
-          setForm({ name: '', description: '', price: '', validity: '', status: 'active' });
-          setNotification({ type: 'success', message: 'Membership plan saved successfully!' });
-          setTimeout(() => setNotification(null), 3000);
+          toast.success(response.data?.message || 'Membership plan saved successfully!');
         } else {
-          setError(response.data?.message || 'Failed to save membership plan');
-          setSuccess(false);
-          setAddMode(false);
-          setEditMode(false);
-          setEditingPlan(null);
-          setForm({ name: '', description: '', price: '', validity: '', status: 'active' });
-          setNotification({ type: 'error', message: response.data?.message || 'Failed to save membership plan' });
-          setTimeout(() => setNotification(null), 3000);
+          toast.error(response.data?.message || 'Failed to save membership plan');
         }
+    setAddMode(false);
+      setEditMode(false);
+      setEditingPlan(null);
+        setForm({ name: '', description: '', price: '', validity: '', status: 'active' });
       } else {
         // Add Plan using provided cURL
         const token = localStorage.getItem('token');
@@ -399,35 +370,21 @@ export default function MembershipPlans() {
         });
         if (response.data?.status === 'success' || (response.data?.message && response.data.message.toLowerCase().includes('success'))) {
           await fetchPlans();
-          setSuccess(response.data?.message || 'Membership plan added successfully!');
-          setError(null);
-          setTimeout(() => setSuccess(false), 3000);
-          setAddMode(false);
-          setEditMode(false);
-          setEditingPlan(null);
-          setForm({ name: '', description: '', price: '', validity: '', status: 'active' });
-          setNotification({ type: 'success', message: 'Membership plan added successfully!' });
-          setTimeout(() => setNotification(null), 3000);
+          toast.success(response.data?.message || 'Membership plan added successfully!');
         } else {
-          setError(response.data?.message || 'Failed to add membership plan');
-          setSuccess(false);
-          setAddMode(false);
-          setEditMode(false);
-          setEditingPlan(null);
-          setForm({ name: '', description: '', price: '', validity: '', status: 'active' });
-          setNotification({ type: 'error', message: response.data?.message || 'Failed to add membership plan' });
-          setTimeout(() => setNotification(null), 3000);
+          toast.error(response.data?.message || 'Failed to add membership plan');
         }
+        setAddMode(false);
+        setEditMode(false);
+        setEditingPlan(null);
+        setForm({ name: '', description: '', price: '', validity: '', status: 'active' });
       }
     } catch (err) {
-      setError(err.message);
-      setSuccess(false);
+      toast.error(err.message);
       setAddMode(false);
       setEditMode(false);
       setEditingPlan(null);
       setForm({ name: '', description: '', price: '', validity: '', status: 'active' });
-      setNotification({ type: 'error', message: err.message });
-      setTimeout(() => setNotification(null), 3000);
     }
   };
 
@@ -450,66 +407,49 @@ export default function MembershipPlans() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-4 py-3">
+      <div className="flex flex-col gap-4 py-3 px-2 sm:px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-orange-600">Membership Plans</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-orange-600">Membership Plans</h1>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <FiPackage className="text-indigo-600" />
             <span>Total Plans: {plans.length}</span>
           </div>
         </div>
 
-        {/* Success Message */}
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FiCheckCircle />
-              <span>{success}</span>
-            </div>
-            <button onClick={() => setSuccess(false)} className="text-green-500 hover:text-green-700">
-              <FiX size={16} />
-            </button>
-          </div>
-        )}
-        {/* Error Message */}
-        {error && !success && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FiAlertCircle />
-              <span>{error}</span>
-            </div>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
-              <FiX size={16} />
-            </button>
-          </div>
-        )}
-
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 max-w-7xl w-full mx-auto">
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto">
           {/* Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search by plan name..."
-                  className="pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  style={{ minWidth: 250 }}
-                />
+          <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="relative w-full sm:w-auto">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by plan name..."
+                    className="pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors w-full sm:min-w-[250px]"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <span>Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, totalEntries)} of {totalEntries} entries</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <span>Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, totalEntries)} of {totalEntries} entries</span>
+              <div className="flex flex-wrap gap-2 items-center">
+                <button className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition" onClick={handleRefresh} disabled={loading} title="Refresh Plans">
+                  <FiRefreshCw className={loading ? "animate-spin" : ""} /> 
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+                <button className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition w-full sm:w-auto justify-center" onClick={handleAdd}>
+                  <FiPlus /> 
+                  <span className="hidden sm:inline">Add Plan</span>
+                  <span className="sm:hidden">Add</span>
+                </button>
               </div>
-            </div>
-            <div className="flex gap-2 items-center">
-              <button className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition" onClick={handleRefresh} disabled={loading} title="Refresh Plans"><FiRefreshCw className={loading ? "animate-spin" : ""} /> Refresh</button>
-              <button className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition" onClick={handleAdd}><FiPlus /> Add Plan</button>
             </div>
           </div>
-          {/* Table */}
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 text-gray-700 dark:text-gray-200 sticky top-0 z-10 shadow-sm">
                 <tr className="border-b-2 border-indigo-200 dark:border-indigo-800">
@@ -593,20 +533,60 @@ export default function MembershipPlans() {
                 ))}
               </tbody>
             </table>
-            {paginated.length === 0 && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-300">
-                <FiPackage className="mx-auto text-4xl mb-2 text-gray-300 dark:text-gray-700" />
-                <p>No membership plans found</p>
           </div>
-            )}
+
+          {/* Mobile Cards */}
+          <div className="lg:hidden p-4 sm:p-6">
+            {paginated.map((plan, idx) => (
+              <div key={plan.id} className={`mb-4 p-4 rounded-lg border ${idx % 2 === 0 ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700' : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700'} hover:shadow-md transition-shadow`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-800 dark:to-purple-900 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                      {plan.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-base">{plan.name}</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">#{startIdx + idx + 1}</p>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${plan.status === 'active' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200'}`}>
+                    {plan.status}
+                  </span>
+                </div>
+                
+                <div className="space-y-2 mb-4">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{plan.description}</p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 text-green-600 dark:text-green-300 font-medium">
+                      <BiRupee size={16} />
+                      <span className="text-sm">{plan.price}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-blue-600 dark:text-blue-300">
+                      <FiCalendar size={16} />
+                      <span className="text-sm">{plan.validity} months</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+
+          {paginated.length === 0 && (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-300">
+              <FiPackage className="mx-auto text-4xl mb-2 text-gray-300 dark:text-gray-700" />
+              <p>No membership plans found</p>
+            </div>
+          )}
           {/* Pagination Controls - moved outside scrollable area */}
             {!addMode && !editMode && totalEntries > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 sm:p-6 border-t border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Show</span>
                 <select className="border rounded-lg px-3 py-1 text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 text-gray-700 focus:ring-2 focus:ring-indigo-400 transition-colors" value={entriesPerPage} onChange={handleEntriesChange}>
-                    {[5, 10, 25, 50, 100].map(num => (
+                    {[10, 25, 50, 100].map(num => (
                   <option key={num} value={num}>{num}</option>
                 ))}
               </select>
@@ -623,21 +603,22 @@ export default function MembershipPlans() {
 
         {/* Add/Edit Modal */}
         {(addMode || editMode) && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-lg relative">
+            <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black bg-opacity-40 p-2 sm:p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8 w-full max-w-lg relative h-[95vh] sm:h-auto sm:max-h-[90vh] flex flex-col">
                 <button
-                  className="absolute top-3 right-3 text-gray-400 hover:text-rose-500 dark:text-gray-300 dark:hover:text-rose-400"
+                  className="absolute top-3 right-3 text-gray-400 hover:text-rose-500 dark:text-gray-300 dark:hover:text-rose-400 z-10"
                   onClick={handleCancel}
                   title="Close"
                 >
-                  <FiX size={22} />
+                  <FiX size={20} className="sm:w-6 sm:h-6" />
                 </button>
-              <h2 className="text-xl font-bold mb-4 text-indigo-700 dark:text-indigo-300">
+              <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 text-indigo-700 dark:text-indigo-300 pr-8 sm:pr-0">
                 {editMode ? 'Edit Membership Plan' : 'Add Membership Plan'}
               </h2>
-                <form className="grid grid-cols-1 gap-y-6" onSubmit={handleSubmit}>
+                <form className="flex-1 flex flex-col" onSubmit={handleSubmit}>
+                  <div className="flex-1 overflow-y-auto space-y-4 sm:space-y-6">
                   <div className="flex flex-col gap-1">
-                    <label className="font-medium text-gray-700 dark:text-gray-200 flex items-center gap-1">
+                    <label className="font-medium text-gray-700 dark:text-gray-200 flex items-center gap-1 text-sm sm:text-base">
                       Plan Name <span className="text-red-500 dark:text-red-400">*</span>
                     </label>
                     <input
@@ -645,30 +626,30 @@ export default function MembershipPlans() {
                       name="name"
                       value={form.name}
                       onChange={handleChange}
-                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500"
+                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500 text-sm"
                       placeholder="Enter plan name"
                       required
                       disabled={submitting}
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="font-medium text-gray-700 dark:text-gray-200 flex items-center gap-1">
+                    <label className="font-medium text-gray-700 dark:text-gray-200 flex items-center gap-1 text-sm sm:text-base">
                       Plan Description <span className="text-red-500 dark:text-red-400">*</span>
                     </label>
                     <textarea
                       name="description"
                       value={form.description}
                       onChange={handleChange}
-                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500"
+                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500 text-sm"
                       placeholder="Enter plan description"
                       rows={3}
                       required
                       disabled={submitting}
                     />
                   </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="font-medium text-gray-700 dark:text-gray-200 flex items-center gap-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-1">
+                    <label className="font-medium text-gray-700 dark:text-gray-200 flex items-center gap-1 text-sm sm:text-base">
                       Plan Price <span className="text-red-500 dark:text-red-400">*</span>
                     </label>
                     <input
@@ -676,7 +657,7 @@ export default function MembershipPlans() {
                       name="price"
                       value={form.price}
                       onChange={handleChange}
-                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500"
+                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500 text-sm"
                       placeholder="0.00"
                       min="0"
                       step="0.01"
@@ -685,7 +666,7 @@ export default function MembershipPlans() {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="font-medium text-gray-700 dark:text-gray-200 flex items-center gap-1">
+                    <label className="font-medium text-gray-700 dark:text-gray-200 flex items-center gap-1 text-sm sm:text-base">
                       Validity (Months) <span className="text-red-500 dark:text-red-400">*</span>
                     </label>
                     <input
@@ -693,7 +674,7 @@ export default function MembershipPlans() {
                       name="validity"
                       value={form.validity}
                       onChange={handleChange}
-                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500"
+                      className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500 text-sm"
                       placeholder="12"
                       min="1"
                       required
@@ -702,32 +683,33 @@ export default function MembershipPlans() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="font-medium text-gray-700 dark:text-gray-200">Status</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-200 text-sm sm:text-base">Status</label>
                   <select
                     name="status"
                     value={form.status}
                     onChange={handleChange}
-                    className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500"
+                    className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500 text-sm"
                     disabled={submitting}
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
-                  </div>
-                  <div className="flex justify-end gap-4 mt-6">
-                    <button
-                      type="button"
-                      className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
-                      onClick={handleCancel}
-                      disabled={submitting}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex items-center gap-2 px-6 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50"
-                      disabled={submitting}
-                    >
+                </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <button
+                    type="button"
+                    className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                    onClick={handleCancel}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex items-center justify-center gap-2 px-6 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50"
+                    disabled={submitting}
+                  >
                     {submitting ? (
                       <>
                         <FiRefreshCw className="animate-spin" />
@@ -739,38 +721,13 @@ export default function MembershipPlans() {
                         {editMode ? 'Update Plan' : 'Save Plan'}
                       </>
                     )}
-                    </button>
-                  </div>
-                </form>
+                  </button>
+                </div>
+              </form>
               </div>
             </div>
           )}
       </div>
-      {notification && (
-  <div
-    style={{
-      position: 'fixed',
-      bottom: 24,
-      right: 24,
-      zIndex: 9999,
-      minWidth: 240,
-      maxWidth: 360,
-      padding: '16px 24px',
-      borderRadius: 8,
-      background: notification.type === 'success' ? '#22c55e' : '#ef4444',
-      color: 'white',
-      fontWeight: 600,
-      boxShadow: '0 2px 16px 0 rgba(0,0,0,0.15)',
-      letterSpacing: 0.2,
-      fontSize: 16,
-      textAlign: 'center',
-      transition: 'opacity 0.3s',
-    }}
-    role="alert"
-  >
-    {notification.message}
-  </div>
-)}
     </DashboardLayout>
   );
 }

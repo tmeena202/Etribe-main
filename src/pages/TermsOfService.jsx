@@ -1,6 +1,7 @@
 import React from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
 import termsImg from "../assets/terms.jpg";
+import { toast } from 'react-toastify';
 
 export default function TermsOfService() {
   return (

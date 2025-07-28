@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
 import { FiEdit2, FiX, FiRefreshCw, FiSave, FiUser, FiAlertCircle, FiCheckCircle, FiSettings, FiPlus } from "react-icons/fi";
 import api from "../api/axiosConfig";
+import { toast } from 'react-toastify';
 
 const initialData = {
   additionalField1: "Aadhar",
@@ -22,12 +23,10 @@ export default function UserAdditionalFields() {
   const [form, setForm] = useState(initialData);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message: string }
 
   // Fetch user additional fields from API
   const fetchUserAdditionalFields = async () => {
     setLoading(true);
-    setNotification(null);
     try {
       const token = localStorage.getItem('token');
       const uid = localStorage.getItem('uid');
@@ -98,8 +97,7 @@ export default function UserAdditionalFields() {
     } catch (err) {
       console.error('Fetch user additional fields error:', err);
       const errorMessage = err.message || 'Failed to fetch user additional fields';
-      setNotification({ type: 'error', message: errorMessage });
-      setTimeout(() => setNotification(null), 3000);
+      toast.error(errorMessage);
       
       if (errorMessage.toLowerCase().includes('token') || errorMessage.toLowerCase().includes('unauthorized') || errorMessage.toLowerCase().includes('log in')) {
         localStorage.removeItem('token');
@@ -148,15 +146,11 @@ export default function UserAdditionalFields() {
   // Save user additional fields to API
   const saveUserAdditionalFields = async (fieldsData) => {
     setSubmitting(true);
-    setNotification(null);
     try {
       // Validate fields before saving
       const validationErrors = validateFields(fieldsData);
       if (validationErrors.length > 0) {
-        setNotification({ type: 'error', message: validationErrors.join(', ') });
-        setTimeout(() => setNotification(null), 3000);
-        setSubmitting(false);
-        return;
+        throw new Error(validationErrors.join(', '));
       }
 
       const token = localStorage.getItem('token');
@@ -193,20 +187,14 @@ export default function UserAdditionalFields() {
       if (response.data?.status === 'success') {
         // Update the data with new values
         setData(fieldsData);
-        setNotification({ type: 'success', message: 'User additional fields saved successfully!' });
-        setTimeout(() => setNotification(null), 3000);
+        toast.success('User additional fields saved successfully!');
         return { success: true };
       } else {
-        setNotification({ type: 'error', message: response.data?.message || 'Failed to save user additional fields' });
-        setTimeout(() => setNotification(null), 3000);
-        setSubmitting(false);
-        return;
+        toast.error(response.data?.message || 'Failed to save user additional fields');
       }
     } catch (err) {
-      setNotification({ type: 'error', message: err.message });
-      setTimeout(() => setNotification(null), 3000);
-      setSubmitting(false);
-      return;
+      console.error('Save user additional fields error:', err);
+      toast.error(err.message);
     } finally {
       setSubmitting(false);
     }
@@ -215,21 +203,19 @@ export default function UserAdditionalFields() {
   // Load user additional fields on component mount
   useEffect(() => {
     fetchUserAdditionalFields();
-    
-    // Set up polling every 60 seconds to keep data fresh
-    const interval = setInterval(fetchUserAdditionalFields, 60000);
-    return () => clearInterval(interval);
+    // Removed setInterval for auto-refresh
+    // Only call fetchUserAdditionalFields after edit operations
   }, []);
 
   const handleEdit = () => {
     setForm(data);
     setEditMode(true);
-    setNotification(null);
+    // No need to clear error with toast
   };
 
   const handleCancel = () => {
     setEditMode(false);
-    setNotification(null);
+    // No need to clear error with toast
     // Reset form to current data
     setForm(data);
   };
@@ -240,11 +226,10 @@ export default function UserAdditionalFields() {
     e.preventDefault();
     try {
       await saveUserAdditionalFields(form);
-      setEditMode(false);
-      // Do NOT clear notification here; let the save function manage it
+    setEditMode(false);
+      // No need to clear error with toast
     } catch (err) {
-      setNotification({ type: 'error', message: err.message });
-      setTimeout(() => setNotification(null), 3000);
+      toast.error(err.message);
     }
   };
 
@@ -270,50 +255,22 @@ export default function UserAdditionalFields() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-4 py-3">
+      <div className="flex flex-col gap-4 py-3 px-2 sm:px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-orange-600">User Additional Fields</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-orange-600">User Additional Fields</h1>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <FiUser className="text-indigo-600" />
             <span>Configured: {configuredFields}/10 fields</span>
           </div>
         </div>
 
-        {/* Floating Toast Notification */}
-        {notification && (console.log('Toast:', notification), null)}
-        {notification && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 24,
-              right: 24,
-              zIndex: 9999,
-              minWidth: 240,
-              maxWidth: 360,
-              padding: '16px 24px',
-              borderRadius: 8,
-              background: notification.type === 'success' ? '#22c55e' : '#ef4444',
-              color: 'white',
-              fontWeight: 600,
-              boxShadow: '0 2px 16px 0 rgba(0,0,0,0.15)',
-              letterSpacing: 0.2,
-              fontSize: 16,
-              textAlign: 'center',
-              transition: 'opacity 0.3s',
-            }}
-            role="alert"
-          >
-            {notification.message}
-          </div>
-        )}
-
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 max-w-7xl w-full mx-auto border border-gray-200 dark:border-gray-700">
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto border border-gray-200 dark:border-gray-700">
           {/* Header Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-2">
-                <FiUser className="text-indigo-600 text-xl" />
-                <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">Additional Fields Configuration</span>
+                <FiUser className="text-indigo-600 text-lg sm:text-xl" />
+                <span className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-100">Additional Fields Configuration</span>
               </div>
               {!editMode && (
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
@@ -322,24 +279,31 @@ export default function UserAdditionalFields() {
                 </div>
               )}
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-wrap gap-2 items-center">
             {!editMode && (
                 <>
-                  <button className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition" onClick={handleRefresh} disabled={loading} title="Refresh Fields"><FiRefreshCw className={loading ? "animate-spin" : ""} /> Refresh</button>
-                  <button className="flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition" onClick={handleEdit}><FiEdit2 /> Edit Fields</button>
+                  <button className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition" onClick={handleRefresh} disabled={loading} title="Refresh Fields">
+                    <FiRefreshCw className={loading ? "animate-spin" : ""} /> 
+                    <span className="hidden sm:inline">Refresh</span>
+                  </button>
+                  <button className="flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition w-full sm:w-auto justify-center" onClick={handleEdit}>
+                    <FiEdit2 /> 
+                    <span className="hidden sm:inline">Edit Fields</span>
+                    <span className="sm:hidden">Edit</span>
+                  </button>
                 </>
             )}
             </div>
           </div>
           {/* Content */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {loading ? (
               <div className="flex items-center justify-center h-32 text-indigo-700 dark:text-indigo-300">
                 <FiRefreshCw className="animate-spin text-indigo-600 dark:text-indigo-300 text-xl mr-2" />
                 Loading user additional fields...
               </div>
             ) : !editMode ? (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Status Card */}
                 <div className={`p-4 rounded-lg border ${configuredFields >= 5 ? 'bg-green-50 dark:bg-green-900/40 border-green-200 dark:border-green-700' : 'bg-yellow-50 dark:bg-yellow-900/40 border-yellow-200 dark:border-yellow-700'}`}>
                   <h3 className={`font-semibold mb-2 flex items-center gap-2 ${configuredFields >= 5 ? 'text-green-700 dark:text-green-200' : 'text-yellow-700 dark:text-yellow-200'}`}>
@@ -351,15 +315,15 @@ export default function UserAdditionalFields() {
                   </p>
                 </div>
                 {/* Fields Display */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                   {Array.from({ length: 10 }).map((_, i) => {
                     const fieldKey = `additionalField${i + 1}`;
                     const fieldValue = data[fieldKey];
                     const isConfigured = fieldValue && fieldValue.trim() !== '';
                     return (
-                      <div key={i} className={`p-4 rounded-lg border ${isConfigured ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700' : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 opacity-60'}`}> 
+                      <div key={i} className={`p-3 sm:p-4 rounded-lg border ${isConfigured ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700' : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 opacity-60'}`}> 
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                          <h4 className="font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2 text-sm sm:text-base">
                             <FiPlus className="text-indigo-600" />
                             Field {i + 1}
                           </h4>
@@ -367,14 +331,14 @@ export default function UserAdditionalFields() {
                             <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded text-xs font-medium">Configured</span>
                           )}
                         </div>
-                        <p className={`text-sm ${isConfigured ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>{isConfigured ? fieldValue : 'Not configured'}</p>
+                        <p className={`text-xs sm:text-sm ${isConfigured ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>{isConfigured ? fieldValue : 'Not configured'}</p>
                       </div>
                     );
                   })}
                   </div>
               </div>
             ) : (
-              <form className="space-y-6" onSubmit={handleSubmit}>
+              <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
                 {/* Form Header */}
                 <div className="bg-yellow-50 dark:bg-yellow-900/40 p-4 rounded-lg border border-yellow-200 dark:border-yellow-700">
                   <h3 className="font-semibold text-yellow-700 dark:text-yellow-200 mb-2 flex items-center gap-2">
@@ -384,13 +348,13 @@ export default function UserAdditionalFields() {
                   <p className="text-yellow-700 dark:text-yellow-200 text-sm">Configure custom fields for user profiles. At least the first 5 fields are required. Field names must be unique.</p>
                 </div>
                 {/* Form Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                   {Array.from({ length: 10 }).map((_, i) => {
                     const fieldKey = `additionalField${i + 1}`;
                     const isRequired = i < 5;
                     return (
                       <div key={i} className="space-y-2">
-                        <label className="block text-gray-700 dark:text-gray-200 font-medium">
+                        <label className="block text-gray-700 dark:text-gray-200 font-medium text-sm sm:text-base">
                           Additional Field {i + 1}
                           {isRequired && <span className="text-red-500 ml-1">*</span>}
                         </label>
@@ -399,7 +363,7 @@ export default function UserAdditionalFields() {
                           name={fieldKey}
                           value={form[fieldKey]}
                       onChange={handleChange}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                          className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors text-sm"
                           placeholder={`Enter field name ${i + 1}`}
                           required={isRequired}
                           disabled={submitting}
@@ -410,9 +374,9 @@ export default function UserAdditionalFields() {
                   })}
                   </div>
                 {/* Form Actions */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                   <button type="button" className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50" onClick={handleCancel} disabled={submitting}>Cancel</button>
-                  <button type="submit" className="flex items-center gap-2 px-6 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition-colors disabled:opacity-50" disabled={submitting}>{submitting ? (<><FiRefreshCw className="animate-spin" />Saving...</>) : (<><FiSave />Save Fields</>)}</button>
+                  <button type="submit" className="flex items-center justify-center gap-2 px-6 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition-colors disabled:opacity-50" disabled={submitting}>{submitting ? (<><FiRefreshCw className="animate-spin" />Saving...</>) : (<><FiSave />Save Fields</>)}</button>
                 </div>
               </form>
             )}

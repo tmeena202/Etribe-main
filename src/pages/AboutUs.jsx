@@ -9,6 +9,7 @@ import msme from "../assets/MSME.png";
 import aashish from "../assets/Aashish.png";
 import parveen from "../assets/Parveen.jpg";
 import rohit from "../assets/Rohit.jpg";
+import { toast } from "react-toastify";
 
 const partners = [
   { name: "BharatBill", logo: bharatBillLogo },

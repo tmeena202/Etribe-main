@@ -5,6 +5,7 @@ import api from "../api/axiosConfig";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { toast } from 'react-toastify';
 
 // Fetch plans for dropdown
 function useMembershipPlans() {
@@ -109,15 +110,15 @@ export default function MembershipExpired() {
         });
         setMembers(Array.isArray(response.data) ? response.data : response.data.data || []);
       } catch (err) {
-        setError(err.response?.data?.message || err.message || 'Failed to fetch expired members');
+        toast.error('Failed to fetch expired members.');
       } finally {
         if (isFirst) setLoading(false);
         if (isFirst) setFirstLoad(false);
       }
     };
     fetchExpiredMembers(true); // Initial load
-    const interval = setInterval(() => fetchExpiredMembers(false), 10000);
-    return () => clearInterval(interval);
+    // Removed setInterval for auto-refresh
+    // Only call fetchExpiredMembers after CRUD operations
   }, []);
 
   // Sorting function
@@ -184,10 +185,12 @@ export default function MembershipExpired() {
     // Validation
     if (!form.plan) {
       setUpdateError('Please select a membership plan.');
+      closeModify();
       return;
     }
     if (!form.validUpto) {
       setUpdateError('Please select a valid until date.');
+      closeModify();
       return;
     }
     // Check if date is in future
@@ -196,6 +199,7 @@ export default function MembershipExpired() {
     today.setHours(0, 0, 0, 0);
     if (selectedDate <= today) {
       setUpdateError('Please select a future date for membership validity.');
+      closeModify();
       return;
     }
     setUpdateLoading(true);
@@ -207,20 +211,22 @@ export default function MembershipExpired() {
         membership_plan_id: form.plan, // Use the selected plan's ID
         valid_upto: form.validUpto,
       });
-      setUpdateSuccess(`Member ${modifyMember.name} has been reactivated successfully!`);
+      toast.success('Membership renewed successfully!');
       setMembers(prevMembers => prevMembers.filter(member => member.id !== modifyMember.id));
-      setTimeout(() => {
     closeModify();
-      }, 2000);
     } catch (err) {
       if (err.response) {
         const errorMessage = err.response.data?.message || err.response.data?.error || 'Failed to activate membership';
         setUpdateError(errorMessage);
+        toast.error(errorMessage);
       } else if (err.request) {
         setUpdateError('Network error. Please check your connection.');
+        toast.error('Network error. Please check your connection.');
       } else {
         setUpdateError('Failed to activate membership. Please try again.');
+        toast.error('Failed to renew membership.');
       }
+      closeModify();
     } finally {
       setUpdateLoading(false);
     }
@@ -348,88 +354,80 @@ export default function MembershipExpired() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-4 py-3">
+      <div className="flex flex-col gap-4 py-3 px-2 sm:px-4">
+        {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-orange-600">Membership Expired</h1>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <h1 className="text-xl sm:text-2xl font-bold text-orange-600">Membership Expired</h1>
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <FiClock className="text-orange-600" />
             <span>Total Expired Members: {members.length}</span>
           </div>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FiAlertCircle />
-              <span>{error}</span>
-            </div>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
-              <FiX size={16} />
-            </button>
-          </div>
-        )}
-
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 max-w-7xl w-full mx-auto">
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto">
           {/* Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+            {/* Search and Info Section */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="relative">
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by name..."
-                  className="pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-                  style={{ minWidth: 250 }}
-            />
+                <input
+                  type="text"
+                  placeholder="Search by name..."
+                  className="w-full sm:w-auto pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  style={{ minWidth: '250px' }}
+                />
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <span>Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, totalEntries)} of {totalEntries} entries</span>
+                <span className="text-center sm:text-left">Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, totalEntries)} of {totalEntries} entries</span>
               </div>
             </div>
-            <div className="flex gap-2 items-center">
+            
+            {/* Export Buttons */}
+            <div className="flex flex-wrap gap-2 items-center">
               <button 
                 className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
                 onClick={() => window.location.reload()}
                 title="Refresh Data"
               >
-                <FiRefreshCw /> Refresh
+                <FiRefreshCw /> <span className="hidden sm:inline">Refresh</span>
               </button>
               <button 
                 className="flex items-center gap-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition"
                 onClick={handleCopyToClipboard}
                 title="Copy to Clipboard"
               >
-                <FiCopy /> Copy
+                <FiCopy /> <span className="hidden sm:inline">Copy</span>
               </button>
               <button 
                 className="flex items-center gap-1 bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition"
                 onClick={handleExportCSV}
                 title="Export CSV"
               >
-                <FiDownload /> CSV
+                <FiDownload /> <span className="hidden sm:inline">CSV</span>
               </button>
               <button 
                 className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition"
                 onClick={handleExportExcel}
                 title="Export Excel"
               >
-                <FiFile /> Excel
+                <FiFile /> <span className="hidden sm:inline">Excel</span>
               </button>
               <button 
                 className="flex items-center gap-1 bg-rose-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition"
                 onClick={handleExportPDF}
                 title="Export PDF"
               >
-                <FiFile /> PDF
+                <FiFile /> <span className="hidden sm:inline">PDF</span>
               </button>
             </div>
           </div>
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
+            {/* Desktop Table */}
+            <table className="w-full text-sm border-collapse hidden lg:table">
               <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 text-gray-700 dark:text-gray-200 sticky top-0 z-10 shadow-sm">
                 <tr className="border-b-2 border-indigo-200 dark:border-indigo-800">
                   <th 
@@ -639,78 +637,158 @@ export default function MembershipExpired() {
                 ))}
               </tbody>
             </table>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden">
+              {paginated.map((m, idx) => (
+                <div 
+                  key={m.id}
+                  className={`border-b border-gray-200 dark:border-gray-700 p-4 ${
+                    idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50'
+                  } hover:bg-indigo-50 dark:hover:bg-gray-700 transition-colors`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                        {m.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{m.name}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Member #{startIdx + idx + 1}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="text-indigo-600 hover:text-indigo-900 p-2 rounded-full hover:bg-indigo-100 transition-colors"
+                        title="Modify Membership"
+                        onClick={() => openModify(m)}
+                      >
+                        <FiEdit2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Contact:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{m.phone_num || m.contact}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Email:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{m.email}</p>
+                    </div>
+                    <div className="col-span-1 sm:col-span-2">
+                      <span className="text-gray-500 dark:text-gray-400">Address:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{m.address}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">PAN Number:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{m.ad1 || m.pan}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Aadhar Number:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{m.ad2 || m.aadhar}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">DL Number:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{m.ad3 || m.dl}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">D.O.B:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{m.ad4 || m.dob}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Company:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{m.company_name || m.company}</p>
+                    </div>
+                    <div className="col-span-1 sm:col-span-2">
+                      <span className="text-gray-500 dark:text-gray-400">Expiry Date:</span>
+                      <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium ml-2 dark:bg-indigo-900 dark:text-gray-100">
+                        {m.membershipExpired || m.membership_expired || "Expired"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
             {/* Pagination Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 border-t border-gray-100 dark:border-gray-700">
-              <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Show</span>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 sm:p-6 border-t border-gray-100 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">Show</span>
                 <select
-                className="border rounded-lg px-3 py-1 text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 text-gray-700 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                  className="border rounded-lg px-3 py-1 text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 text-gray-700 focus:ring-2 focus:ring-indigo-400 transition-colors"
                   value={entriesPerPage}
                   onChange={handleEntriesChange}
                 >
-                  {[5, 10, 25, 50, 100].map(num => (
+                  {[10, 25, 50, 100].map(num => (
                     <option key={num} value={num}>{num}</option>
                   ))}
                 </select>
-              <span className="text-sm text-gray-600 dark:text-gray-400">entries per page</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">entries per page</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center sm:justify-end gap-2">
                 <button
                   onClick={handlePrev}
                   disabled={currentPage === 1}
-                className={`px-3 py-1 rounded-lg text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors ${
                     currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                   title="Previous"
                 >
                   Previous
                 </button>
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
                   Page {currentPage} of {totalPages}
                 </span>
                 <button
                   onClick={handleNext}
                   disabled={currentPage === totalPages}
-                className={`px-3 py-1 rounded-lg text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors ${
                     currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                   title="Next"
                 >
                   Next
                 </button>
+              </div>
             </div>
-          </div>
         </div>
         
         {/* Enhanced Modify Membership Modal */}
         {modifyMember && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-lg relative border border-gray-200 dark:border-gray-700">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-1 sm:p-4"
+            onClick={closeModify}
+          >
+            <div
+              className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-[16rem] sm:max-w-lg mx-2 max-h-[98vh] flex flex-col p-2 sm:p-6 relative"
+              onClick={e => e.stopPropagation()}
+            >
               <button
-                className="absolute top-4 right-4 text-gray-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"
+                className="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-400 dark:text-gray-500 hover:text-rose-500 transition-colors z-10 p-1 sm:p-2"
                 onClick={closeModify}
                 title="Close"
               >
-                <FiX size={24} />
+                <FiX size={18} className="sm:w-6 sm:h-6" />
               </button>
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center text-white font-semibold text-xl">
+              <div className="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-6 pr-8 sm:pr-0">
+                <div className="w-9 h-9 sm:w-16 sm:h-16 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center text-white font-semibold text-base sm:text-2xl">
                   {modifyMember.name ? modifyMember.name.charAt(0).toUpperCase() : 'N'}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Renew Membership</h2>
-                  <p className="text-gray-600 dark:text-gray-300">Update membership for {modifyMember.name || 'Unknown Member'}</p>
+                  <h2 className="text-base sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Renew Membership</h2>
+                  <p className="text-xs sm:text-base text-gray-600 dark:text-gray-400">Update membership for {modifyMember.name || 'Unknown Member'}</p>
                 </div>
               </div>
               <form className="space-y-6" onSubmit={e => e.preventDefault()}>
                 <div>
-                  <label className="block text-gray-700 dark:text-gray-200 font-semibold mb-2">Membership Plan *</label>
+                  <label className="block text-gray-700 font-semibold mb-2">Membership Plan *</label>
                   <select
                     name="plan"
                     value={form.plan}
                     onChange={handleFormChange}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500 transition-colors"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-400 transition-colors"
                     required
                   >
                     <option value="">Select Plan</option>
@@ -720,53 +798,42 @@ export default function MembershipExpired() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-gray-700 dark:text-gray-200 font-semibold mb-2">Valid Until *</label>
-                  <div className="relative">
-                    <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <label className="block text-gray-700 font-semibold mb-2">Valid Until *</label>
                     <input
                       type="date"
                       name="validUpto"
                       value={form.validUpto}
                       onChange={handleDateChange}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 dark:focus:ring-indigo-500 transition-colors"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-400 transition-colors"
                       required
                     />
-                  </div>
                 </div>
-                {updateError && (
-                  <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <FiAlertCircle />
-                      <span>{updateError}</span>
-                    </div>
-                  </div>
-                )}
-                {updateSuccess && (
-                  <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <FiUsers />
-                      <span>{updateSuccess}</span>
-                    </div>
-                  </div>
-                )}
-                <div className="flex gap-4 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+                <div className="flex gap-2 mt-4">
                   <button
                     type="button"
-                    className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                    className="flex-1 px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                     onClick={closeModify}
                     disabled={updateLoading}
                   >
                     Cancel
                   </button>
                   <button
-                    type="button"
-                    className="px-6 py-2 rounded-lg bg-orange-600 text-white font-semibold hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    type="submit"
+                    disabled={updateLoading}
+                    className={`flex-1 flex items-center justify-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-white ${updateLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
                     onClick={handleUpdate}
-                    disabled={updateLoading || !form.plan || !form.validUpto}
                   >
-                    {updateLoading && <FiRefreshCw className="animate-spin" size={16} />}
-                    {updateLoading ? 'Updating...' : 'Update Membership'}
+                    {updateLoading ? (
+                      <>
+                        <FiRefreshCw className="animate-spin" size={14} />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm">✔</span>
+                        Save Changes
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

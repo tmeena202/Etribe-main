@@ -73,6 +73,7 @@ export default function AnalyticsGraph() {
     inactive: 0,
     expired: 0
   });
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   // Fetch analytics with optional loading spinner
   const fetchAnalytics = async (showLoading = false) => {
@@ -117,21 +118,17 @@ export default function AnalyticsGraph() {
         return monthMap;
       };
 
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const activeByMonth = groupByMonth(activeMembers);
       const inactiveByMonth = groupByMonth(inactiveMembers);
       const expiredByMonth = groupByMonth(expiredMembers);
 
-      // Prepend a dummy entry for '0' at the start of the X-axis, then all months
-      const chartData = [
-        { month: '0', Active: 0, Inactive: 0, Expired: 0 },
-        ...months.map((month, idx) => ({
-          month,
-          Active: activeByMonth[idx] || 0,
-          Inactive: inactiveByMonth[idx] || 0,
-          Expired: expiredByMonth[idx] || 0,
-        }))
-      ];
+      // Chart data: all months, no dummy entry
+      const chartData = months.map((month, idx) => ({
+        month,
+        Active: activeByMonth[idx] || 0,
+        Inactive: inactiveByMonth[idx] || 0,
+        Expired: expiredByMonth[idx] || 0,
+      }));
       setData(chartData);
       setLastUpdated(new Date());
       
@@ -170,7 +167,7 @@ export default function AnalyticsGraph() {
     switch (chartType) {
       case 'area':
         return (
-          <AreaChart data={filteredData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <AreaChart data={filteredData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
             <defs>
               <linearGradient id="activeGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
@@ -192,6 +189,10 @@ export default function AnalyticsGraph() {
               fontSize={12}
               tickLine={false}
               axisLine={false}
+              padding={{ left: 0, right: 0 }}
+              ticks={months}
+              interval={0}
+              allowDataOverflow={false}
             />
             <YAxis 
               allowDecimals={false}
@@ -222,7 +223,7 @@ export default function AnalyticsGraph() {
 
       case 'bar':
         return (
-          <BarChart data={filteredData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <BarChart data={filteredData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis 
               dataKey="month" 
@@ -230,6 +231,10 @@ export default function AnalyticsGraph() {
               fontSize={12}
               tickLine={false}
               axisLine={false}
+              padding={{ left: 0, right: 0 }}
+              ticks={months}
+              interval={0}
+              allowDataOverflow={false}
             />
             <YAxis 
               allowDecimals={false}
@@ -256,9 +261,10 @@ export default function AnalyticsGraph() {
           </BarChart>
         );
 
-      default: // line chart
+      case 'line':
+      default:
         return (
-          <LineChart data={filteredData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <LineChart data={filteredData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis 
               dataKey="month" 
@@ -266,6 +272,10 @@ export default function AnalyticsGraph() {
               fontSize={12}
               tickLine={false}
               axisLine={false}
+              padding={{ left: 0, right: 0 }}
+              ticks={months}
+              interval={0}
+              allowDataOverflow={false}
             />
             <YAxis 
               allowDecimals={false}
@@ -325,15 +335,20 @@ export default function AnalyticsGraph() {
         <div className="absolute inset-0 bg-gradient-to-r from-indigo-300 via-blue-200 to-blue-300 dark:from-indigo-900 dark:via-blue-900 dark:to-gray-900" />
         <div className="absolute inset-0 bg-white/30 dark:bg-gray-800/40 backdrop-blur-md border-b border-white/30 dark:border-gray-700" />
         <div className="relative z-10 flex items-center gap-3 px-5 py-3">
-          <div className="p-2 bg-white/20 dark:bg-gray-800/40 rounded-lg backdrop-blur-sm">
-            <FiTrendingUp className="w-6 h-6 text-white dark:text-indigo-200" />
-          </div>
-          <h2 className="text-xl font-bold text-gray-800 dark:text-indigo-100 tracking-wide">Member Analytics</h2>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-indigo-100 tracking-wide flex-1">Member Analytics</h2>
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="p-2 bg-white/20 dark:bg-gray-800/40 rounded-lg backdrop-blur-sm hover:bg-white/30 dark:hover:bg-gray-700/40 transition-all duration-200 disabled:opacity-50"
+            aria-label="Refresh"
+          >
+            <FiRefreshCw className={`w-5 h-5 text-indigo-600 dark:text-indigo-300 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
       {/* Chart Controls */}
-      <div className="px-8 py-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-6">
+      <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex flex-row flex-wrap items-center gap-3">
         {/* Chart Type Selector */}
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Chart:</span>
@@ -380,20 +395,28 @@ export default function AnalyticsGraph() {
             Updated: {lastUpdated.toLocaleTimeString()}
           </div>
         )}
-
-        {/* Refresh Button */}
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          className="ml-auto p-2 bg-white/20 dark:bg-gray-800/40 rounded-lg backdrop-blur-sm hover:bg-white/30 dark:hover:bg-gray-700/40 transition-all duration-200 disabled:opacity-50"
-          aria-label="Refresh"
-        >
-          <FiRefreshCw className={`w-5 h-5 text-indigo-600 dark:text-indigo-300 ${loading ? 'animate-spin' : ''}`} />
-        </button>
       </div>
 
       {/* Chart Container */}
-      <div className="flex-1 min-h-0 h-0 flex items-center justify-center">
+      <div className="flex-1 min-h-0 h-0 flex items-center justify-center" style={{ outline: 'none', userSelect: 'none' }}>
+        <style jsx>{`
+          .recharts-surface {
+            outline: none !important;
+            border: none !important;
+          }
+          .recharts-wrapper {
+            outline: none !important;
+            border: none !important;
+          }
+          svg {
+            outline: none !important;
+            border: none !important;
+          }
+          .recharts-surface:focus {
+            outline: none !important;
+            border: none !important;
+          }
+        `}</style>
         {loading ? (
           <div className="flex items-center justify-center h-full w-full">
             <div className="text-center">

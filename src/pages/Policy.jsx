@@ -1,6 +1,7 @@
 import React from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
 import privacyPolicyImg from "../assets/privacy-policy.jpg";
+import { toast } from 'react-toastify';
 
 export default function Policy() {
   return (

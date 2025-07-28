@@ -4,6 +4,7 @@ import { FiCalendar, FiPlus, FiClock, FiUsers, FiMapPin, FiSearch, FiFilter, FiR
 import api from "../api/axiosConfig";
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import { toast } from 'react-toastify';
 
 // Helper functions
 function isSameDay(d1, d2) {
@@ -25,6 +26,42 @@ function stripHtml(html) {
   const div = document.createElement('div');
   div.innerHTML = html;
   return div.textContent || div.innerText || '';
+}
+
+// Helper to get CKEditor contentsCss based on dark mode
+function getCKEditorContentsCss() {
+  const isDark = document.documentElement.classList.contains('dark');
+  return isDark
+    ? [
+        'https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/styles.css',
+        `
+        body, .ck-editor__editable, .ck-content {
+          background: #1a2233 !important;
+          color: #000 !important;
+        }
+        .ck.ck-editor__main > .ck-editor__editable:not(.ck-focused) {
+          background: #1a2233 !important;
+          color: #000 !important;
+        }
+        .ck-placeholder, .ck-content ::placeholder {
+          color: #000 !important;
+          opacity: 1 !important;
+        }
+        `
+      ]
+    : [
+        'https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/styles.css',
+        `
+        body, .ck-editor__editable, .ck-content {
+          background: #fff !important;
+          color: #111827 !important;
+        }
+        .ck-placeholder, .ck-content ::placeholder {
+          color: #111827 !important;
+          opacity: 1 !important;
+        }
+        `
+      ];
 }
 
 // SimpleCalendar component
@@ -52,31 +89,35 @@ const SimpleCalendar = ({ selectedDate, onDateSelect, events }) => {
 
   return (
     <div className="h-full flex flex-col justify-center">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
         <button
           onClick={() => navigateMonth(-1)}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          className="p-1 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
         >
-          {/* ...icon unchanged */}
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
         </button>
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-100 text-center">
           {monthNames[currentMonth]} {currentYear}
         </h3>
         <button
           onClick={() => navigateMonth(1)}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          className="p-1 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
         >
-          {/* ...icon unchanged */}
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </button>
       </div>
       <div className="grid grid-cols-7 gap-1 mb-2">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="text-center text-sm font-medium text-gray-700 dark:text-white py-2">
+          <div key={day} className="text-center text-xs sm:text-sm font-medium text-gray-700 dark:text-white py-1 sm:py-2">
             {day}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1 dark:bg-gray-700 rounded-xl p-2 flex-1">
+      <div className="grid grid-cols-7 gap-1 dark:bg-gray-700 rounded-xl p-1 sm:p-2 flex-1">
         {days.map((day, index) => {
           if (day === null) {
             return <div key={index} className="aspect-square"></div>;
@@ -88,7 +129,7 @@ const SimpleCalendar = ({ selectedDate, onDateSelect, events }) => {
           const dotColor = getEventDotColor(eventsForDay);
 
           // --- CORRECTED CLASSES ---
-          let cellClass = "aspect-square p-2 cursor-pointer rounded-xl transition-all duration-200 transform hover:scale-105 hover:shadow-lg relative group ";
+          let cellClass = "aspect-square p-1 sm:p-2 cursor-pointer rounded-lg sm:rounded-xl transition-all duration-200 transform hover:scale-105 hover:shadow-lg relative group ";
           // Selected date
           if (isSelected) {
             cellClass +=
@@ -108,18 +149,18 @@ const SimpleCalendar = ({ selectedDate, onDateSelect, events }) => {
               onClick={() => onDateSelect(dayDate)}
               className={cellClass}
             >
-              <div className="text-lg font-bold text-gray-800 dark:text-white text-center">
+              <div className="text-sm sm:text-lg font-bold text-gray-800 dark:text-white text-center">
                 {day}
               </div>
               {eventsForDay.length > 0 && (
                 <>
-                  <div className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full shadow-lg ${dotColor} ${eventsForDay.some(ev => ev.type === 'past') ? '' : 'animate-pulse'}`} />
+                  <div className={`absolute bottom-0.5 sm:bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shadow-lg ${dotColor} ${eventsForDay.some(ev => ev.type === 'past') ? '' : 'animate-pulse'}`} />
                   {eventsForDay.length > 0 && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg">
+                    <div className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-4 h-4 sm:w-5 sm:h-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg">
                       {eventsForDay.length}
                     </div>
                   )}
-                  <div className="pointer-events-none absolute -top-12 left-1/2 hidden w-max max-w-48 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs text-white group-hover:block z-50 shadow-xl">
+                  <div className="pointer-events-none absolute -top-10 sm:-top-12 left-1/2 hidden w-max max-w-40 sm:max-w-48 -translate-x-1/2 rounded-lg bg-gray-900 px-2 sm:px-3 py-1.5 sm:py-2 text-xs text-white group-hover:block z-50 shadow-xl">
                     <div className="font-semibold mb-1">Events:</div>
                     {eventsForDay.slice(0, 3).map((ev, idx) => (
                       <div key={idx} className="truncate">{ev.name}</div>
@@ -157,8 +198,6 @@ export default function Calendar() {
     invitationImage: null
   });
   const [formErrors, setFormErrors] = useState({});
-  const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message: string }
-
   // Stats for pills (use backend endpoints for counts to match Dashboard)
   const [todayCount, setTodayCount] = useState(0);
   const [upcomingCount, setUpcomingCount] = useState(0);
@@ -193,9 +232,9 @@ export default function Calendar() {
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-      setNotification({ type: 'error', message: Object.values(errors).join('\n') });
+      toast.error(Object.values(errors).join('\n'));
       setShowAddEventForm(false);
-      setTimeout(() => setNotification(null), 3000);
+      setTimeout(() => toast.dismiss(), 3000);
       return;
     }
     setLoading(true);
@@ -235,13 +274,13 @@ export default function Calendar() {
         sendReminderTo: "Only Approved Members",
         invitationImage: null
       });
+      toast.success('Event added successfully!');
       setShowAddEventForm(false);
-      setNotification({ type: 'success', message: 'Event added successfully!' });
-      setTimeout(() => setNotification(null), 3000);
+      setTimeout(() => toast.dismiss(), 3000);
     } catch (err) {
       setShowAddEventForm(false);
-      setNotification({ type: 'error', message: 'Failed to add event' });
-      setTimeout(() => setNotification(null), 3000);
+      toast.error('Failed to add event');
+      setTimeout(() => toast.dismiss(), 3000);
     } finally {
       setLoading(false);
     }
@@ -351,14 +390,85 @@ export default function Calendar() {
         credentials: 'include',
         body: formData,
       });
-      setEditSuccess('Event updated successfully!');
-      setTimeout(() => setEditSuccess(null), 2000);
+      toast.success('Event updated successfully!');
+      setTimeout(() => toast.dismiss(), 2000);
       setShowEditEventModal(false);
-      // Refresh events
+      // Refresh events after adding/editing/deleting
       setLoading(true);
-      // (re-fetch events logic here, or optimistically update if desired)
+      try {
+        const token = localStorage.getItem('token');
+        const uid = localStorage.getItem('uid');
+        const response = await api.post('/event/index', {}, {
+          headers: {
+            'Client-Service': 'COHAPPRT',
+            'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
+            'uid': uid,
+            'token': token,
+            'rurl': 'login.etribes.in',
+            'Content-Type': 'application/json',
+          }
+        });
+        let backendEvents = [];
+        if (Array.isArray(response.data?.data?.event)) {
+          backendEvents = response.data.data.event;
+        } else if (Array.isArray(response.data?.data?.events)) {
+          backendEvents = response.data.data.events;
+        } else if (Array.isArray(response.data?.data)) {
+          backendEvents = response.data.data;
+        } else if (Array.isArray(response.data)) {
+          backendEvents = response.data;
+        } else if (response.data?.data && typeof response.data.data === 'object') {
+          backendEvents = Object.values(response.data.data);
+        } else {
+          backendEvents = [];
+        }
+        // Map backend fields to calendar event structure
+        const mappedEvents = backendEvents.map((e, idx) => {
+          // Always parse date as a JS Date object
+          let eventDate = null;
+          if (e.event_date && e.event_time) {
+            eventDate = new Date(`${e.event_date}T${e.event_time}`);
+          } else if (e.event_date) {
+            eventDate = new Date(e.event_date);
+          } else if (e.datetime) {
+            eventDate = new Date(e.datetime);
+          } else if (e.date_time) {
+            eventDate = new Date(e.date_time);
+          } else if (e.date) {
+            eventDate = new Date(e.date);
+          } else {
+            eventDate = new Date();
+          }
+          // Defensive: if eventDate is a string, convert to Date
+          if (!(eventDate instanceof Date) || isNaN(eventDate)) {
+            eventDate = new Date(eventDate);
+          }
+          // Determine type
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          const eventDay = new Date(eventDate);
+          eventDay.setHours(0,0,0,0);
+          let type = 'upcoming';
+          if (eventDay < today) type = 'past';
+          else if (eventDay.getTime() === today.getTime()) type = 'today';
+          return {
+            id: e.id || idx, // Assuming 'id' is available in backend
+            name: e.event_title || e.event || e.title || e.name || '',
+            date: eventDate,
+            attendees: e.attendees || e.attendee_count || e.count || 0,
+            description: e.event_description || e.agenda || e.description || '',
+            type,
+            imageUrl: e.event_image || '', // Assuming 'event_image' is available
+          };
+        });
+        setEvents(mappedEvents);
+      } catch (err) {
+        toast.error(err.response?.data?.message || err.message || 'Failed to fetch events');
+      } finally {
+        setLoading(false);
+      }
     } catch (err) {
-      setEditError('Failed to update event');
+      toast.error('Failed to update event');
     } finally {
       setEditLoading(false);
     }
@@ -387,8 +497,10 @@ export default function Calendar() {
         body: JSON.stringify({ id: eventId }),
       });
       setEvents(prevEvents => prevEvents.filter(e => e.id !== eventId));
+      toast.success('Event deleted successfully!');
+      setTimeout(() => toast.dismiss(), 3000);
     } catch (err) {
-      setDeleteError('Failed to delete event');
+      toast.error('Failed to delete event');
     } finally {
       setDeleteLoading(false);
     }
@@ -482,9 +594,7 @@ export default function Calendar() {
     };
     fetchCounts();
     // Removed setInterval polling
-    // let interval;
-    // interval = setInterval(fetchCounts, 10000);
-    // return () => clearInterval(interval);
+    // Only call fetchCounts after CRUD operations
     return () => {};
   }, []);
 
@@ -562,7 +672,7 @@ export default function Calendar() {
         });
         setEvents(mappedEvents);
       } catch (err) {
-        setError(err.response?.data?.message || err.message || 'Failed to fetch events');
+        toast.error(err.response?.data?.message || err.message || 'Failed to fetch events');
       } finally {
         setLoading(false);
       }
@@ -581,19 +691,21 @@ export default function Calendar() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-4 py-3">
+      <div className="flex flex-col gap-4 py-3 px-2 sm:px-4">
+        {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-orange-600">Event Calendar</h1>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <h1 className="text-xl sm:text-2xl font-bold text-orange-600">Event Calendar</h1>
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <FiCalendar className="text-indigo-600" />
             <span>Total Events: {events.length}</span>
-                </div>
-                </div>
+          </div>
+        </div>
 
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 max-w-7xl w-full mx-auto">
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto">
           {/* Header Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+            {/* Title and Description */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex items-center gap-2">
                 <FiCalendar className="text-indigo-600 text-xl" />
                 <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">Calendar Management</span>
@@ -605,17 +717,20 @@ export default function Calendar() {
               </div>
             </div>
 
-            <div className="flex gap-2 items-center">
-              <div className="flex items-center gap-2">
+            {/* Stats and Add Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 px-3 py-1 rounded-full text-sm font-semibold">{events.filter(ev => isSameDay(new Date(ev.date), new Date())).length} Today</span>
                 <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 px-3 py-1 rounded-full text-sm font-semibold">{upcomingCount} Upcoming</span>
                 <span className="bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200 px-3 py-1 rounded-full text-sm font-semibold">{pastCount} Past</span>
-                <span className="text-gray-700 dark:text-gray-200 font-semibold ml-2">{time.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{time.toLocaleTimeString([], { hour12: false })}</span>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-700 dark:text-gray-200 font-semibold">{time.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{time.toLocaleTimeString([], { hour12: false })}</span>
+                </div>
               </div>
               {!showAddEventForm && (
                 <button
-                  className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
+                  className="flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition w-full sm:w-auto"
                   onClick={handleShowAddEventForm}
                 >
                   <FiPlus />
@@ -626,11 +741,11 @@ export default function Calendar() {
           </div>
 
           {/* Main Content: Two Columns */}
-          <div className="flex flex-col xl:flex-row gap-6 p-6 h-[800px]">
+          <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 p-4 sm:p-6 min-h-[600px] lg:min-h-[800px]">
             {/* Left: Calendar Card */}
-            <div className="flex-1 min-w-0 h-full flex flex-col">
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 relative h-full flex flex-col">
-                 <div className="p-4 flex-1 flex flex-col">
+            <div className="flex-1 min-w-0 flex flex-col">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 relative flex-1 flex flex-col">
+                <div className="p-3 sm:p-4 flex-1 flex flex-col">
                   <SimpleCalendar 
                     selectedDate={selectedDate}
                     onDateSelect={setSelectedDate}
@@ -641,9 +756,9 @@ export default function Calendar() {
             </div>
             
             {/* Right: Event Details Card */}
-            <div className="w-full xl:w-96 flex-shrink-0 h-full flex flex-col">
-              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 h-full flex flex-col">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+            <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 flex flex-col">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 flex-1 flex flex-col">
+                <div className="px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-gray-700">
                   <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                     <FiEye className="text-indigo-600" />
                     Event Details
@@ -658,7 +773,7 @@ export default function Calendar() {
                   </p>
                 </div>
                 {/* Event cards for selected date */}
-                <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+                <div className="p-4 sm:p-6 space-y-4 flex-1 overflow-y-auto">
                   {eventsForDate.length === 0 ? (
                     <div className="text-center py-8">
                       <FiCalendar className="text-gray-300 dark:text-gray-600 text-4xl mx-auto mb-3" />
@@ -674,35 +789,38 @@ export default function Calendar() {
                             : 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700'
                       }`}>
                         <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full ${
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
                               ev.type === 'today' 
                                 ? 'bg-green-500' 
                                 : ev.type === 'upcoming' 
                                   ? 'bg-blue-500' 
                                   : 'bg-gray-500'
                             }`}></div>
-                            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{ev.name}</h3>
+                            <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">{ev.name}</h3>
                           </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
                             ev.type === 'today' 
                               ? 'bg-green-200 dark:bg-green-800 text-green-700 dark:text-green-200' 
                               : ev.type === 'upcoming' 
                                 ? 'bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-200' 
                                 : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200'
                           }`}>
-                                {ev.type.charAt(0).toUpperCase() + ev.type.slice(1)}
-                              </span>
-                            </div>
+                            {ev.type.charAt(0).toUpperCase() + ev.type.slice(1)}
+                          </span>
+                        </div>
                         
                         <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                              <div className="flex items-center gap-2">
-                            <FiCalendar className="text-gray-400" size={14} />
+                          <div className="flex items-center gap-2">
+                            <FiCalendar className="text-gray-400 flex-shrink-0" size={14} />
                             <span>{ev.date.toLocaleDateString()}</span>
-                              </div>
-                         {stripHtml(ev.description) && (
-                           <div className="overflow-x-auto whitespace-nowrap"><span className="font-medium text-gray-800 dark:text-gray-100">Agenda:</span> {stripHtml(ev.description)}</div>
-                         )}
+                          </div>
+                          {stripHtml(ev.description) && (
+                            <div className="break-words">
+                              <span className="font-medium text-gray-800 dark:text-gray-100">Agenda:</span> 
+                              <span className="line-clamp-2">{stripHtml(ev.description)}</span>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -713,7 +831,7 @@ export default function Calendar() {
                             <FiTrash2 size={16} />
                           </button>
                         </div>
-                    </div>
+                      </div>
                     ))
                   )}
                 </div>
@@ -724,118 +842,123 @@ export default function Calendar() {
 
         {/* Add Event Modal */}
         {showAddEventForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-2xl mx-4 relative max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-1" onClick={handleHideAddEventForm}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-2 max-h-[98vh] flex flex-col" onClick={e => e.stopPropagation()}>
               <button
-                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors z-10 p-1"
                 onClick={handleHideAddEventForm}
                 title="Close"
               >
-                <FiX size={24} />
+                <FiX size={18} />
               </button>
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+              <div className="p-4 pb-2 pr-10">
+                <h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
                   <FiPlus className="text-indigo-600 dark:text-indigo-300" />
                   Add New Event
                 </h2>
-                <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">Create a new event with details, venue, and schedule</p>
+                <p className="text-gray-600 dark:text-gray-300 text-xs mt-1">Create a new event with details</p>
               </div>
-              <form className="space-y-6" onSubmit={handleAddEventSubmit}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Event Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="event"
-                      value={addEventForm.event}
-                      onChange={handleAddEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${formErrors.event ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Enter event name"
-                    />
-                    {formErrors.event && <div className="text-red-600 text-xs mt-1">{formErrors.event}</div>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Venue <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="venue"
-                      value={addEventForm.venue}
-                      onChange={handleAddEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${formErrors.venue ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Enter venue"
-                    />
-                    {formErrors.venue && <div className="text-red-600 text-xs mt-1">{formErrors.venue}</div>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={addEventForm.date}
-                      onChange={handleAddEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${formErrors.date ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Select date"
-                    />
-                    {formErrors.date && <div className="text-red-600 text-xs mt-1">{formErrors.date}</div>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Time <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      name="time"
-                      value={addEventForm.time}
-                      onChange={handleAddEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${formErrors.time ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Select time"
-                    />
-                    {formErrors.time && <div className="text-red-600 text-xs mt-1">{formErrors.time}</div>}
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Agenda <span className="text-red-500">*</span>
-                    </label>
-                    <div className={`rounded-lg p-1 bg-white dark:bg-gray-700 dark:text-gray-100 ${formErrors.agenda ? 'border border-red-500' : ''}`}>
-                      <CKEditor
-                        editor={ClassicEditor}
-                        data={addEventForm.agenda}
-                        onChange={handleAgendaChange}
-                        config={{
-                          placeholder: 'Describe the event agenda and details',
-                        }}
+              <form className="flex-1 flex flex-col" onSubmit={handleAddEventSubmit}>
+                <div className="flex-1 overflow-y-auto px-4 space-y-3">
+                    <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Event Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="event"
+                        value={addEventForm.event}
+                        onChange={handleAddEventChange}
+                      className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${formErrors.event ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                        placeholder="Enter event name"
                       />
+                      {formErrors.event && <div className="text-red-600 text-xs mt-1">{formErrors.event}</div>}
                     </div>
-                    {formErrors.agenda && <div className="text-red-600 text-xs mt-1">{formErrors.agenda}</div>}
+                    <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Venue <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="venue"
+                        value={addEventForm.venue}
+                        onChange={handleAddEventChange}
+                      className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${formErrors.venue ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                        placeholder="Enter venue"
+                      />
+                      {formErrors.venue && <div className="text-red-600 text-xs mt-1">{formErrors.venue}</div>}
+                    </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="date"
+                        value={addEventForm.date}
+                        onChange={handleAddEventChange}
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${formErrors.date ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                        placeholder="Select date"
+                      />
+                      {formErrors.date && <div className="text-red-600 text-xs mt-1">{formErrors.date}</div>}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Time <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        name="time"
+                        value={addEventForm.time}
+                        onChange={handleAddEventChange}
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${formErrors.time ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                        placeholder="Select time"
+                      />
+                      {formErrors.time && <div className="text-red-600 text-xs mt-1">{formErrors.time}</div>}
+                    </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Invitation Image
-                    </label>
-                    <input
-                      type="file"
-                      name="invitationImage"
-                      accept="image/*"
-                      onChange={handleAddEventChange}
-                      className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors border-gray-200 dark:border-gray-600"
-                    />
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Agenda <span className="text-red-500">*</span>
+                      </label>
+                      <div className={`rounded-lg p-1 bg-white dark:bg-gray-700 dark:text-gray-700 ${formErrors.agenda ? 'border border-red-500' : ''}`}>
+                        <CKEditor
+                          editor={ClassicEditor}
+                          data={addEventForm.agenda}
+                          onChange={handleAgendaChange}
+                          config={{
+                            placeholder: 'Describe the event agenda and details',
+                            contentsCss: getCKEditorContentsCss(),
+                          toolbar: ['bold', 'italic', 'bulletedList', 'numberedList'],
+                          height: '120px',
+                          }}
+                        />
+                      </div>
+                      {formErrors.agenda && <div className="text-red-600 text-xs mt-1">{formErrors.agenda}</div>}
+                    </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Invitation Image
+                      </label>
+                      <input
+                        type="file"
+                        name="invitationImage"
+                        accept="image/*"
+                        onChange={handleAddEventChange}
+                      className="w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors border-gray-200 dark:border-gray-600"
+                      />
                   </div>
+                  {formErrors.api && (
+                    <div className="bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-200 px-3 py-2 rounded-lg text-xs">
+                      {formErrors.api}
+                    </div>
+                  )}
                 </div>
-                {formErrors.api && (
-                  <div className="bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg">
-                    {formErrors.api}
-                  </div>
-                )}
-                <div className="flex gap-4 mt-4">
+                <div className="flex gap-2 p-4 pt-2 border-t border-gray-200 dark:border-gray-700">
                   <button
                     type="button"
-                    className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                    className="flex-1 px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                     onClick={handleHideAddEventForm}
                     disabled={loading}
                   >
@@ -844,16 +967,16 @@ export default function Calendar() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className={`flex items-center gap-2 px-8 py-2 rounded-lg font-medium transition-colors text-white ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+                    className={`flex-1 flex items-center justify-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-white ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
                   >
                     {loading ? (
                       <>
-                        <FiRefreshCw className="animate-spin" />
+                        <FiRefreshCw className="animate-spin" size={14} />
                         Saving...
                       </>
                     ) : (
                       <>
-                        <span className="text-lg">✔</span>
+                        <span className="text-sm">✔</span>
                         Save
                       </>
                     )}
@@ -866,123 +989,128 @@ export default function Calendar() {
 
         {/* Edit Event Modal */}
         {showEditEventModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-2xl mx-4 relative max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-1" onClick={closeEditEventModal}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-2 max-h-[98vh] flex flex-col" onClick={e => e.stopPropagation()}>
               <button
-                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors z-10 p-1"
                 onClick={closeEditEventModal}
                 title="Close"
               >
-                <FiX size={24} />
+                <FiX size={18} />
               </button>
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+              <div className="p-4 pb-2 pr-10">
+                <h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
                   <FiEdit2 className="text-indigo-600 dark:text-indigo-300" />
                   Edit Event
                 </h2>
-                <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">Modify the details of the event</p>
+                <p className="text-gray-600 dark:text-gray-300 text-xs mt-1">Modify the details of the event</p>
               </div>
-              <form className="space-y-6" onSubmit={handleEditEventSubmit}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Event Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="event"
-                      value={editEventForm.event}
-                      onChange={handleEditEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${editFormErrors.event ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Enter event name"
-                    />
-                    {editFormErrors.event && <div className="text-red-600 text-xs mt-1">{editFormErrors.event}</div>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Venue <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="venue"
-                      value={editEventForm.venue}
-                      onChange={handleEditEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${editFormErrors.venue ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Enter venue"
-                    />
-                    {editFormErrors.venue && <div className="text-red-600 text-xs mt-1">{editFormErrors.venue}</div>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={editEventForm.date}
-                      onChange={handleEditEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${editFormErrors.date ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Select date"
-                    />
-                    {editFormErrors.date && <div className="text-red-600 text-xs mt-1">{editFormErrors.date}</div>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Time <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      name="time"
-                      value={editEventForm.time}
-                      onChange={handleEditEventChange}
-                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${editFormErrors.time ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Select time"
-                    />
-                    {editFormErrors.time && <div className="text-red-600 text-xs mt-1">{editFormErrors.time}</div>}
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Agenda <span className="text-red-500">*</span>
-                    </label>
-                    <div className={`rounded-lg p-1 bg-white dark:bg-gray-700 dark:text-gray-100 ${editFormErrors.agenda ? 'border border-red-500' : ''}`}>
-                      <CKEditor
-                        editor={ClassicEditor}
-                        data={editEventForm.agenda}
-                        onChange={handleEditAgendaChange}
-                        config={{
-                          placeholder: 'Describe the event agenda and details',
-                        }}
+              <form className="flex-1 flex flex-col" onSubmit={handleEditEventSubmit}>
+                <div className="flex-1 overflow-y-auto px-4 space-y-3">
+                    <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Event Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="event"
+                        value={editEventForm.event}
+                        onChange={handleEditEventChange}
+                      className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${editFormErrors.event ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                        placeholder="Enter event name"
                       />
+                      {editFormErrors.event && <div className="text-red-600 text-xs mt-1">{editFormErrors.event}</div>}
                     </div>
-                    {editFormErrors.agenda && <div className="text-red-600 text-xs mt-1">{editFormErrors.agenda}</div>}
+                    <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Venue <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="venue"
+                        value={editEventForm.venue}
+                        onChange={handleEditEventChange}
+                      className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${editFormErrors.venue ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                        placeholder="Enter venue"
+                      />
+                      {editFormErrors.venue && <div className="text-red-600 text-xs mt-1">{editFormErrors.venue}</div>}
+                    </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="date"
+                        value={editEventForm.date}
+                        onChange={handleEditEventChange}
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${editFormErrors.date ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                        placeholder="Select date"
+                      />
+                      {editFormErrors.date && <div className="text-red-600 text-xs mt-1">{editFormErrors.date}</div>}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Time <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        name="time"
+                        value={editEventForm.time}
+                        onChange={handleEditEventChange}
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${editFormErrors.time ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                        placeholder="Select time"
+                      />
+                      {editFormErrors.time && <div className="text-red-600 text-xs mt-1">{editFormErrors.time}</div>}
+                    </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Invitation Image
-                    </label>
-                    <input
-                      type="file"
-                      name="invitationImage"
-                      accept="image/*"
-                      onChange={handleEditEventChange}
-                      className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors border-gray-200 dark:border-gray-600"
-                    />
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Agenda <span className="text-red-500">*</span>
+                      </label>
+                      <div className={`rounded-lg p-1 bg-white dark:bg-gray-700 dark:text-gray-700 ${editFormErrors.agenda ? 'border border-red-500' : ''}`}>
+                        <CKEditor
+                          editor={ClassicEditor}
+                          data={editEventForm.agenda}
+                          onChange={handleEditAgendaChange}
+                          config={{
+                            placeholder: 'Describe the event agenda and details',
+                            contentsCss: getCKEditorContentsCss(),
+                          toolbar: ['bold', 'italic', 'bulletedList', 'numberedList'],
+                          height: '120px',
+                          }}
+                        />
+                      </div>
+                      {editFormErrors.agenda && <div className="text-red-600 text-xs mt-1">{editFormErrors.agenda}</div>}
+                    </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Invitation Image
+                      </label>
+                      <input
+                        type="file"
+                        name="invitationImage"
+                        accept="image/*"
+                        onChange={handleEditEventChange}
+                      className="w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors border-gray-200 dark:border-gray-600"
+                      />
                   </div>
+                  {editError && (
+                    <div className="bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-200 px-3 py-2 rounded-lg text-xs">
+                      {editError}
+                    </div>
+                  )}
+                  {editSuccess && (
+                    <div className="bg-green-100 dark:bg-green-900 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-200 px-3 py-2 rounded-lg text-xs">
+                      {editSuccess}
+                    </div>
+                  )}
                 </div>
-                {editError && (
-                  <div className="bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg">
-                    {editError}
-                  </div>
-                )}
-                {editSuccess && (
-                  <div className="bg-green-100 dark:bg-green-900 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-200 px-4 py-3 rounded-lg">
-                    {editSuccess}
-                  </div>
-                )}
-                <div className="flex gap-4 mt-4">
+                <div className="flex gap-2 p-4 pt-2 border-t border-gray-200 dark:border-gray-700">
                   <button
                     type="button"
-                    className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                    className="flex-1 px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                     onClick={closeEditEventModal}
                     disabled={editLoading}
                   >
@@ -991,16 +1119,16 @@ export default function Calendar() {
                   <button
                     type="submit"
                     disabled={editLoading}
-                    className={`flex items-center gap-2 px-8 py-2 rounded-lg font-medium transition-colors text-white ${editLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                    className={`flex-1 flex items-center justify-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-white ${editLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                   >
                     {editLoading ? (
                       <>
-                        <FiRefreshCw className="animate-spin" />
+                        <FiRefreshCw className="animate-spin" size={14} />
                         Saving...
                       </>
                     ) : (
                       <>
-                        <span className="text-lg">✔</span>
+                        <span className="text-sm">✔</span>
                         Save Changes
                       </>
                     )}
@@ -1011,31 +1139,7 @@ export default function Calendar() {
           </div>
         )}
       </div>
-      {notification && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 24,
-            right: 24,
-            zIndex: 9999,
-            minWidth: 240,
-            maxWidth: 360,
-            padding: '16px 24px',
-            borderRadius: 8,
-            background: notification.type === 'success' ? '#22c55e' : '#ef4444',
-            color: 'white',
-            fontWeight: 600,
-            boxShadow: '0 2px 16px 0 rgba(0,0,0,0.15)',
-            letterSpacing: 0.2,
-            fontSize: 16,
-            textAlign: 'center',
-            transition: 'opacity 0.3s',
-          }}
-          role="alert"
-        >
-          {notification.message}
-        </div>
-      )}
+      {/* Removed custom notification UI */}
     </DashboardLayout>
   );
 } 

@@ -4,6 +4,7 @@ import logo from '../assets/logos/company-logo.png';
 import bgImage from '../assets/images/bg-login.jpg';
 import countries from 'world-countries';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 const countryList = countries.map(c => ({ code: c.cca2, name: c.name.common }));
 
@@ -11,7 +12,6 @@ const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [redirect, setRedirect] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [regForm, setRegForm] = useState({
     name: '',
     contact: '',
@@ -56,14 +56,14 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
+    // No need to clear error with toast
     
     const username = e.target.email.value; // Using email field as username per API
     const password = e.target.password.value;
     
     // Basic validation
     if (!username || !password) {
-      setError('Please fill in all fields');
+      toast.error('Please enter both email and password.');
       setLoading(false);
       return;
     }
@@ -80,11 +80,11 @@ const Login = () => {
         }
         setRedirect(true);
       } else {
-        setError('Invalid response from server');
+        toast.error('Invalid email or password.');
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      toast.error('An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -184,7 +184,6 @@ const Login = () => {
                 aria-describedby="login-password-error"
               />
             </div>
-            {error && <div id="login-error" className="text-red-500 text-sm text-center" role="alert">{error}</div>}
             <button 
               type="submit" 
               className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition disabled:opacity-50" 

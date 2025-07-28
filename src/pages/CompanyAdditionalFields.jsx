@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
-import { FiEdit2, FiX, FiRefreshCw, FiSave, FiHome, FiAlertCircle, FiCheckCircle, FiSettings, FiPlus, FiBriefcase } from "react-icons/fi";
+import {
+  FiEdit2,
+  FiRefreshCw,
+  FiSave,
+  FiHome,
+  FiAlertCircle,
+  FiSettings,
+  FiBriefcase,
+} from "react-icons/fi";
 import api from "../api/axiosConfig";
+import { toast } from "react-toastify";
 
 const initialData = {
   companyField1: "",
@@ -22,122 +31,107 @@ export default function CompanyAdditionalFields() {
   const [form, setForm] = useState(initialData);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [notification, setNotification] = useState(null); // { type: 'success' | 'error', message: string }
 
   // Fetch company additional fields from API
   const fetchCompanyAdditionalFields = async () => {
     setLoading(true);
-    setNotification(null);
     try {
-      const token = localStorage.getItem('token');
-      const uid = localStorage.getItem('uid');
-      
+      const token = localStorage.getItem("token");
+      const uid = localStorage.getItem("uid");
+
       if (!token || !uid) {
-        throw new Error('Authentication required. Please log in.');
+        throw new Error("Authentication required. Please log in.");
       }
 
-      const response = await api.post('/groupSettings/get_company_additional_fields', {}, {
-        headers: {
-          'Client-Service': 'COHAPPRT',
-          'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-          'uid': uid,
-          'token': token,
-          'rurl': 'login.etribes.in',
+      const response = await api.post(
+        "/groupSettings/get_company_additional_fields",
+        {},
+        {
+          headers: {
+            "Client-Service": "COHAPPRT",
+            "Auth-Key": "4F21zrjoAASqz25690Zpqf67UyY",
+            uid,
+            token,
+            rurl: "login.etribes.in",
+          },
         }
-      });
+      );
 
-      console.log('Company Additional Fields Response:', response.data);
-      
-      // Map backend data to frontend format - handle nested structure
       const backendData = response.data?.data || response.data || {};
-      console.log('Backend data received:', backendData);
-      console.log('All available fields:', Object.keys(backendData));
-      console.log('Response status:', response.data?.status);
-      
-      // Map backend data to frontend format based on actual API response
-      const mappedData = {
-        companyField1: backendData.ad1 || "",
-        companyField2: backendData.ad2 || "",
-        companyField3: backendData.ad3 || "",
-        companyField4: backendData.ad4 || "",
-        companyField5: backendData.ad5 || "",
-        companyField6: backendData.ad6 || "",
-        companyField7: backendData.ad7 || "",
-        companyField8: backendData.ad8 || "",
-        companyField9: backendData.ad9 || "",
-        companyField10: backendData.ad10 || "",
-      };
-      
-      console.log('Backend ad1 value:', backendData.ad1);
-      console.log('Mapped companyField1 value:', mappedData.companyField1);
 
-      console.log('Mapped data:', mappedData);
-      
-      // Check if backend data is an array (different structure)
+      // Map backend data to frontend format
+      let mappedData = initialData;
       if (Array.isArray(backendData)) {
-        console.log('Backend data is an array, processing differently');
-        const arrayMappedData = { ...initialData };
+        mappedData = { ...initialData };
         backendData.forEach((field, index) => {
           if (index < 10) {
-            arrayMappedData[`companyField${index + 1}`] = field.name || field.label || field.value || field || initialData[`companyField${index + 1}`];
+            mappedData[`companyField${index + 1}`] =
+              field.name || field.label || field.value || field || initialData[`companyField${index + 1}`];
           }
         });
-        setData(arrayMappedData);
-        setForm(arrayMappedData);
-      } else if (!backendData || Object.keys(backendData).length === 0) {
-        console.log('No data from API, using default data');
-        setData(initialData);
-        setForm(initialData);
-      } else {
-        console.log('Setting data to state:', mappedData);
-        console.log('Current data state before update:', data);
-        setData(mappedData);
-        setForm(mappedData);
-        console.log('Data state should be updated to:', mappedData);
+      } else if (backendData && Object.keys(backendData).length > 0) {
+        mappedData = {
+          companyField1: backendData.ad1 || "",
+          companyField2: backendData.ad2 || "",
+          companyField3: backendData.ad3 || "",
+          companyField4: backendData.ad4 || "",
+          companyField5: backendData.ad5 || "",
+          companyField6: backendData.ad6 || "",
+          companyField7: backendData.ad7 || "",
+          companyField8: backendData.ad8 || "",
+          companyField9: backendData.ad9 || "",
+          companyField10: backendData.ad10 || "",
+        };
       }
+
+      setData(mappedData);
+      setForm(mappedData);
     } catch (err) {
-      console.error('Fetch company additional fields error:', err);
-      const errorMessage = err.message || 'Failed to fetch company additional fields';
-      setNotification({ type: 'error', message: errorMessage });
-      setTimeout(() => setNotification(null), 3000);
-      
-      if (errorMessage.toLowerCase().includes('token') || errorMessage.toLowerCase().includes('unauthorized') || errorMessage.toLowerCase().includes('log in')) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('uid');
-        window.location.href = '/login';
+      console.error("Fetch company additional fields error:", err);
+      const message = err.message || "Failed to fetch company additional fields";
+      toast.error(message);
+
+      if (
+        message.toLowerCase().includes("token") ||
+        message.toLowerCase().includes("unauthorized") ||
+        message.toLowerCase().includes("log in")
+      ) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("uid");
+        window.location.href = "/login";
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // Validate company additional fields
+  // Validation function
   const validateFields = (fieldsData) => {
     const errors = [];
 
-    // Check for required fields (at least first 5 should be filled)
+    // Required first 5 fields validation
     for (let i = 1; i <= 5; i++) {
       const fieldName = `companyField${i}`;
-      if (!fieldsData[fieldName] || fieldsData[fieldName].trim() === '') {
+      if (!fieldsData[fieldName] || fieldsData[fieldName].trim() === "") {
         errors.push(`Company Field ${i} is required`);
       }
     }
 
-    // Check for duplicate field names
-    const fieldValues = Object.values(fieldsData).filter(val => val && val.trim() !== '');
-    const uniqueValues = new Set(fieldValues);
-    if (fieldValues.length !== uniqueValues.size) {
-      errors.push('Field names must be unique');
+    // Check for duplicate fields
+    const filled = Object.values(fieldsData).filter((v) => v && v.trim() !== "");
+    const unique = new Set(filled);
+    if (filled.length !== unique.size) {
+      errors.push("Field names must be unique");
     }
 
-    // Check for field name length
+    // Length checks
     Object.entries(fieldsData).forEach(([key, value]) => {
-      if (value && value.trim() !== '') {
+      if (value && value.trim() !== "") {
         if (value.trim().length < 2) {
-          errors.push(`${key.replace('companyField', 'Company Field ')} must be at least 2 characters long`);
+          errors.push(`${key.replace("companyField", "Company Field ")} must be at least 2 characters long`);
         }
         if (value.trim().length > 50) {
-          errors.push(`${key.replace('companyField', 'Company Field ')} must be less than 50 characters`);
+          errors.push(`${key.replace("companyField", "Company Field ")} must be less than 50 characters`);
         }
       }
     });
@@ -145,27 +139,21 @@ export default function CompanyAdditionalFields() {
     return errors;
   };
 
-  // Save company additional fields to API
+  // Save company additional fields
   const saveCompanyAdditionalFields = async (fieldsData) => {
     setSubmitting(true);
-    setNotification(null);
     try {
-      // Validate fields before saving
       const validationErrors = validateFields(fieldsData);
       if (validationErrors.length > 0) {
-        setNotification({ type: 'error', message: validationErrors.join(', ') });
-        setTimeout(() => setNotification(null), 3000);
-        setSubmitting(false);
-        return;
+        throw new Error(validationErrors.join(", "));
       }
 
-      const token = localStorage.getItem('token');
-      const uid = localStorage.getItem('uid');
+      const token = localStorage.getItem("token");
+      const uid = localStorage.getItem("uid");
       if (!token || !uid) {
-        throw new Error('Authentication required. Please log in.');
+        throw new Error("Authentication required. Please log in.");
       }
 
-      // Prepare payload for backend
       const payload = {
         ad1: fieldsData.companyField1,
         ad2: fieldsData.companyField2,
@@ -179,44 +167,38 @@ export default function CompanyAdditionalFields() {
         ad10: fieldsData.companyField10,
       };
 
-      const response = await api.post('/GroupSettings/company_additional_fields_setting', payload, {
-        headers: {
-          'Client-Service': 'COHAPPRT',
-          'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-          'uid': uid,
-          'token': token,
-          'rurl': 'login.etribes.in',
-          'Content-Type': 'application/json',
+      const response = await api.post(
+        "/GroupSettings/company_additional_fields_setting",
+        payload,
+        {
+          headers: {
+            "Client-Service": "COHAPPRT",
+            "Auth-Key": "4F21zrjoAASqz25690Zpqf67UyY",
+            uid,
+            token,
+            rurl: "login.etribes.in",
+            "Content-Type": "application/json",
+          },
         }
-      });
+      );
 
-      if (response.data?.status === 'success') {
-        // Update the data with new values
+      if (response.data?.status === "success") {
         setData(fieldsData);
-        setNotification({ type: 'success', message: 'Company additional fields saved successfully!' });
-        setTimeout(() => setNotification(null), 3000);
+        toast.success("Company additional fields saved successfully!");
         return { success: true };
       } else {
-        setNotification({ type: 'error', message: response.data?.message || 'Failed to save company additional fields' });
-        setTimeout(() => setNotification(null), 3000);
-        setSubmitting(false);
-        return;
+        toast.error(response.data?.message || "Failed to save company additional fields");
       }
     } catch (err) {
-      setNotification({ type: 'error', message: err.message });
-      setTimeout(() => setNotification(null), 3000);
-      setSubmitting(false);
-      return;
+      console.error("Save company additional fields error:", err);
+      toast.error(err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Load company additional fields on component mount
   useEffect(() => {
     fetchCompanyAdditionalFields();
-    
-    // Set up polling every 60 seconds to keep data fresh
     const interval = setInterval(fetchCompanyAdditionalFields, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -224,13 +206,10 @@ export default function CompanyAdditionalFields() {
   const handleEdit = () => {
     setForm(data);
     setEditMode(true);
-    setNotification(null);
   };
 
   const handleCancel = () => {
     setEditMode(false);
-    setNotification(null);
-    // Reset form to current data
     setForm(data);
   };
 
@@ -241,11 +220,8 @@ export default function CompanyAdditionalFields() {
     try {
       await saveCompanyAdditionalFields(form);
       setEditMode(false);
-      // Do NOT clear notification here; let the save function manage it
-      // setNotification(null);
-    } catch (err) {
-      setNotification({ type: 'error', message: err.message });
-      setTimeout(() => setNotification(null), 3000);
+    } catch {
+      // Errors handled inside saveCompanyAdditionalFields
     }
   };
 
@@ -253,10 +229,9 @@ export default function CompanyAdditionalFields() {
     fetchCompanyAdditionalFields();
   };
 
-  // Check if fields are configured
-  const configuredFields = Object.values(data).filter(field => field && field.trim() !== '').length;
+  const configuredFields = Object.values(data).filter((f) => f && f.trim() !== "").length;
 
-  if (loading && Object.values(data).every(val => val === "")) {
+  if (loading && Object.values(data).every((val) => val === "")) {
     return (
       <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center">
@@ -271,50 +246,24 @@ export default function CompanyAdditionalFields() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-4 py-3">
+      <div className="flex flex-col gap-4 py-3 px-2 sm:px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-orange-600">Company Additional Fields</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-orange-600">Company Additional Fields</h1>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <FiHome className="text-indigo-600" />
             <span>Configured: {configuredFields}/10 fields</span>
           </div>
         </div>
 
-        {/* Floating Toast Notification */}
-        {notification && (console.log('Toast:', notification), null)}
-        {notification && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 24,
-              right: 24,
-              zIndex: 9999,
-              minWidth: 240,
-              maxWidth: 360,
-              padding: '16px 24px',
-              borderRadius: 8,
-              background: notification.type === 'success' ? '#22c55e' : '#ef4444',
-              color: 'white',
-              fontWeight: 600,
-              boxShadow: '0 2px 16px 0 rgba(0,0,0,0.15)',
-              letterSpacing: 0.2,
-              fontSize: 16,
-              textAlign: 'center',
-              transition: 'opacity 0.3s',
-            }}
-            role="alert"
-          >
-            {notification.message}
-          </div>
-        )}
-
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 max-w-7xl w-full mx-auto border border-gray-200 dark:border-gray-700">
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto border border-gray-200 dark:border-gray-700">
           {/* Header Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-2">
-                <FiHome className="text-indigo-600 text-xl" />
-                <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">Company Fields Configuration</span>
+                <FiHome className="text-indigo-600 text-lg sm:text-xl" />
+                <span className="text-base sm:text-lg font-semibold text-gray-800 dark:text-gray-100">
+                  Company Fields Configuration
+                </span>
               </div>
               {!editMode && (
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
@@ -323,97 +272,185 @@ export default function CompanyAdditionalFields() {
                 </div>
               )}
             </div>
-            <div className="flex gap-2 items-center">
-            {!editMode && (
+            <div className="flex flex-wrap gap-2 items-center">
+              {!editMode && (
                 <>
-                  <button className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition" onClick={handleRefresh} disabled={loading} title="Refresh Fields"><FiRefreshCw className={loading ? "animate-spin" : ""} /> Refresh</button>
-                  <button className="flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition" onClick={handleEdit}><FiEdit2 /> Edit Fields</button>
+                  <button
+                    className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
+                    onClick={handleRefresh}
+                    disabled={loading}
+                    title="Refresh Fields"
+                  >
+                    <FiRefreshCw className={loading ? "animate-spin" : ""} /> 
+                    <span className="hidden sm:inline">Refresh</span>
+                  </button>
+                  <button
+                    className="flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition w-full sm:w-auto justify-center"
+                    onClick={handleEdit}
+                  >
+                    <FiEdit2 /> 
+                    <span className="hidden sm:inline">Edit Fields</span>
+                    <span className="sm:hidden">Edit</span>
+                  </button>
                 </>
-            )}
+              )}
             </div>
           </div>
+
           {/* Content */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {loading ? (
               <div className="flex items-center justify-center h-32 text-indigo-700 dark:text-indigo-300">
                 <FiRefreshCw className="animate-spin text-indigo-600 dark:text-indigo-300 text-xl mr-2" />
                 Loading company additional fields...
               </div>
             ) : !editMode ? (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Status Card */}
-                <div className={`p-4 rounded-lg border ${configuredFields >= 5 ? 'bg-green-50 dark:bg-green-900/40 border-green-200 dark:border-green-700' : 'bg-yellow-50 dark:bg-yellow-900/40 border-yellow-200 dark:border-yellow-700'}`}>
-                  <h3 className={`font-semibold mb-2 flex items-center gap-2 ${configuredFields >= 5 ? 'text-green-700 dark:text-green-200' : 'text-yellow-700 dark:text-yellow-200'}`}>
-                    <FiSettings className={configuredFields >= 5 ? 'text-green-600 dark:text-green-200' : 'text-yellow-600 dark:text-yellow-200'} />
+                <div
+                  className={`p-4 rounded-lg border ${
+                    configuredFields >= 5
+                      ? "bg-green-50 dark:bg-green-900/40 border-green-200 dark:border-green-700"
+                      : "bg-yellow-50 dark:bg-yellow-900/40 border-yellow-200 dark:border-yellow-700"
+                  }`}
+                >
+                  <h3
+                    className={`font-semibold mb-2 flex items-center gap-2 ${
+                      configuredFields >= 5
+                        ? "text-green-700 dark:text-green-200"
+                        : "text-yellow-700 dark:text-yellow-200"
+                    }`}
+                  >
+                    <FiSettings
+                      className={
+                        configuredFields >= 5
+                          ? "text-green-600 dark:text-green-200"
+                          : "text-yellow-600 dark:text-yellow-200"
+                      }
+                    />
                     Configuration Status
                   </h3>
-                  <p className={`text-sm ${configuredFields >= 5 ? 'text-green-600 dark:text-green-200' : 'text-yellow-600 dark:text-yellow-200'}`}>
-                    {configuredFields >= 5 ? `${configuredFields} company fields are configured and ready for use.` : `${configuredFields} fields configured. At least 5 fields are recommended for better company profile management.`}
+                  <p
+                    className={`text-sm ${
+                      configuredFields >= 5
+                        ? "text-green-600 dark:text-green-200"
+                        : "text-yellow-600 dark:text-yellow-200"
+                    }`}
+                  >
+                    {configuredFields >= 5
+                      ? `${configuredFields} company fields are configured and ready for use.`
+                      : `${configuredFields} fields configured. At least 5 fields are recommended for better company profile management.`}
                   </p>
                 </div>
+
                 {/* Fields Display */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                   {Array.from({ length: 10 }).map((_, i) => {
                     const fieldKey = `companyField${i + 1}`;
                     const fieldValue = data[fieldKey];
-                    const isConfigured = fieldValue && fieldValue.trim() !== '';
+                    const isConfigured = fieldValue && fieldValue.trim() !== "";
                     return (
-                      <div key={i} className={`p-4 rounded-lg border ${isConfigured ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700' : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 opacity-60'}`}> 
+                      <div
+                        key={i}
+                        className={`p-3 sm:p-4 rounded-lg border ${
+                          isConfigured
+                            ? "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                            : "bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 opacity-60"
+                        }`}
+                      >
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                          <h4 className="font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2 text-sm sm:text-base">
                             <FiBriefcase className="text-indigo-600" />
                             Company Field {i + 1}
                           </h4>
                           {isConfigured && (
-                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded text-xs font-medium">Configured</span>
+                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200 rounded text-xs font-medium">
+                              Configured
+                            </span>
                           )}
                         </div>
-                        <p className={`text-sm ${isConfigured ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>{isConfigured ? fieldValue : 'Not configured'}</p>
+                        <p
+                          className={`text-xs sm:text-sm ${
+                            isConfigured ? "text-gray-800 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"
+                          }`}
+                        >
+                          {isConfigured ? fieldValue : "Not configured"}
+                        </p>
                       </div>
                     );
                   })}
-                  </div>
+                </div>
               </div>
             ) : (
-              <form className="space-y-6" onSubmit={handleSubmit}>
+              <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
                 {/* Form Header */}
                 <div className="bg-yellow-50 dark:bg-yellow-900/40 p-4 rounded-lg border border-yellow-200 dark:border-yellow-700">
                   <h3 className="font-semibold text-yellow-700 dark:text-yellow-200 mb-2 flex items-center gap-2">
                     <FiAlertCircle className="text-yellow-600 dark:text-yellow-200" />
                     Company Fields Configuration
                   </h3>
-                  <p className="text-yellow-700 dark:text-yellow-200 text-sm">Configure custom fields for company profiles. At least the first 5 fields are required. Field names must be unique.</p>
+                  <p className="text-yellow-700 dark:text-yellow-200 text-sm">
+                    Configure custom fields for company profiles. At least the first 5 fields are required. Field names
+                    must be unique.
+                  </p>
                 </div>
+
                 {/* Form Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                   {Array.from({ length: 10 }).map((_, i) => {
                     const fieldKey = `companyField${i + 1}`;
                     const isRequired = i < 5;
                     return (
                       <div key={i} className="space-y-2">
-                        <label className="block text-gray-700 dark:text-gray-200 font-medium">
+                        <label className="block text-gray-700 dark:text-gray-200 font-medium text-sm sm:text-base">
                           Company Field {i + 1}
                           {isRequired && <span className="text-red-500 ml-1">*</span>}
                         </label>
-                    <input
-                      type="text"
+                        <input
+                          type="text"
                           name={fieldKey}
                           value={form[fieldKey]}
-                      onChange={handleChange}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors text-sm"
                           placeholder={`Enter company field name ${i + 1}`}
                           required={isRequired}
                           disabled={submitting}
                         />
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{isRequired ? 'Required field' : 'Optional field'}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {isRequired ? "Required field" : "Optional field"}
+                        </p>
                       </div>
                     );
                   })}
-                  </div>
+                </div>
+
                 {/* Form Actions */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
-                  <button type="button" className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50" onClick={handleCancel} disabled={submitting}>Cancel</button>
-                  <button type="submit" className="flex items-center gap-2 px-6 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition-colors disabled:opacity-50" disabled={submitting}>{submitting ? (<><FiRefreshCw className="animate-spin" />Saving...</>) : (<><FiSave />Save Fields</>)}</button>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <button
+                    type="button"
+                    className="px-6 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+                    onClick={handleCancel}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex items-center justify-center gap-2 px-6 py-2 rounded-lg bg-green-600 text-white font-semibold shadow hover:bg-green-700 transition-colors disabled:opacity-50"
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      <>
+                        <FiRefreshCw className="animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <FiSave />
+                        Save Fields
+                      </>
+                    )}
+                  </button>
                 </div>
               </form>
             )}
@@ -422,4 +459,4 @@ export default function CompanyAdditionalFields() {
       </div>
     </DashboardLayout>
   );
-} 
+}

@@ -70,26 +70,26 @@ const statusData = [
       count: activeCount, // Real value
     gradient: "bg-gradient-to-br from-emerald-200 via-green-100 to-white dark:from-emerald-800 dark:via-green-900 dark:to-gray-800",
     icon: <FiUserCheck size={32} className="text-blue-600 dark:text-emerald-300 opacity-80" />, // Adjust icon color for contrast
-    path: "/membership-management/active",
+    path: "/members-services/active",
   },
   {
     label: "Inactive",
       count: inactiveCount, // Real value
     gradient: "bg-gradient-to-br from-blue-200 via-indigo-200 to-white dark:from-blue-900 dark:via-indigo-900 dark:to-gray-900 ",
     icon: <FiUserX size={32} className="text-emerald-600 dark:text-blue-300 opacity-80" />, // Adjust icon color for contrast
-    path: "/membership-management/inactive",
+    path: "/members-services/inactive",
   },
   {
     label: "Membership Expired",
       count: expiredCount, // Real value
     gradient: "bg-gradient-to-br from-rose-200 via-pink-100 to-white dark:from-rose-900 dark:via-pink-900 dark:to-gray-900",
     icon: <FiAlertCircle size={32} className="text-rose-600 dark:text-rose-300 opacity-80" />, // Adjust icon color for contrast
-    path: "/membership-management/expired",
+    path: "/members-services/expired",
   },
 ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
       {statusData.map((status) => (
         <div
           key={status.label}

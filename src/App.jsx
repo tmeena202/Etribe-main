@@ -1,35 +1,36 @@
-import React, { Suspense, lazy } from "react";
+import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-
-// Lazy load all page components
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const AdminManagement = lazy(() => import("./pages/AdminManagement"));
-const EventManagement = lazy(() => import("./pages/EventManagement"));
-const ImportantContactsPage = lazy(() => import("./pages/ImportantContacts"));
-const MasterSettings = lazy(() => import("./pages/MasterSettings"));
-const ActiveMembers = lazy(() => import("./pages/ActiveMembers"));
-const InactiveMembers = lazy(() => import("./pages/InactiveMembers"));
-const MembershipExpired = lazy(() => import("./pages/MembershipExpired"));
-const AdminAccounts = lazy(() => import("./pages/AdminAccounts"));
-const UserRoles = lazy(() => import("./pages/UserRoles"));
-const RoleManagement = lazy(() => import("./pages/RoleManagement"));
-const GroupData = lazy(() => import("./pages/GroupData"));
-const SMTPSettings = lazy(() => import("./pages/SMTPSettings"));
-const MessageSettings = lazy(() => import("./pages/MessageSettings"));
-const UserAdditionalFields = lazy(() => import("./pages/UserAdditionalFields"));
-const CompanyAdditionalFields = lazy(() => import("./pages/CompanyAdditionalFields"));
-const MembershipPlans = lazy(() => import("./pages/MembershipPlans"));
-const AllEvents = lazy(() => import("./pages/AllEvents"));
-const UpcomingEventsPage = lazy(() => import("./pages/UpcomingEventsPage"));
-const PastEvents = lazy(() => import("./pages/PastEvents"));
-const AboutUs = lazy(() => import("./pages/AboutUs"));
-const OurServices = lazy(() => import("./pages/OurServices"));
-const Contact = lazy(() => import("./pages/Contact"));
-const Policy = lazy(() => import("./pages/Policy"));
-const TermsOfService = lazy(() => import("./pages/TermsOfService"));
-const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
-const Calendar = lazy(() => import("./pages/Calendar"));
-const Login = lazy(() => import("./pages/Login"));
+import Dashboard from "./pages/Dashboard";
+import AdminManagement from "./pages/AdminManagement";
+import EventManagement from "./pages/EventManagement";
+import ImportantContactsPage from "./pages/ImportantContacts";
+import MasterSettings from "./pages/MasterSettings";
+import ActiveMembers from "./pages/ActiveMembers";
+import InactiveMembers from "./pages/InactiveMembers";
+import MembershipExpired from "./pages/MembershipExpired";
+import AdminAccounts from "./pages/AdminAccounts";
+import UserRoles from "./pages/UserRoles";
+import RoleManagement from "./pages/RoleManagement";
+import GroupData from "./pages/GroupData";
+import SMTPSettings from "./pages/SMTPSettings";
+import MessageSettings from "./pages/MessageSettings";
+import UserAdditionalFields from "./pages/UserAdditionalFields";
+import CompanyAdditionalFields from "./pages/CompanyAdditionalFields";
+import MembershipPlans from "./pages/MembershipPlans";
+import AllEvents from "./pages/AllEvents";
+import UpcomingEventsPage from "./pages/UpcomingEventsPage";
+import PastEvents from "./pages/PastEvents";
+import AboutUs from "./pages/AboutUs";
+import OurServices from "./pages/OurServices";
+import Contact from "./pages/Contact";
+import Policy from "./pages/Policy";
+import TermsOfService from "./pages/TermsOfService";
+import CookiePolicy from "./pages/CookiePolicy";
+import Calendar from "./pages/Calendar";
+import Login from "./pages/Login";
+import DashboardLayout from "./components/Layout/DashboardLayout";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function isAuthenticated() {
   return !!localStorage.getItem('token');
@@ -45,14 +46,13 @@ function ProtectedRoute({ children }) {
 function App() {
   return (
     <Router>
-      <Suspense fallback={<div className="w-full h-screen flex items-center justify-center text-xl font-semibold text-gray-600 dark:text-gray-200">Loading...</div>}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={isAuthenticated() ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/membership-management/active" element={<ProtectedRoute><ActiveMembers /></ProtectedRoute>} />
-        <Route path="/membership-management/inactive" element={<ProtectedRoute><InactiveMembers /></ProtectedRoute>} />
-        <Route path="/membership-management/expired" element={<ProtectedRoute><MembershipExpired /></ProtectedRoute>} />
+        <Route path="/members-services/active" element={<ProtectedRoute><ActiveMembers /></ProtectedRoute>} />
+        <Route path="/members-services/inactive" element={<ProtectedRoute><InactiveMembers /></ProtectedRoute>} />
+        <Route path="/members-services/expired" element={<ProtectedRoute><MembershipExpired /></ProtectedRoute>} />
         <Route path="/admin-management" element={<ProtectedRoute><AdminManagement /></ProtectedRoute>} />
         <Route path="/admin-management/accounts" element={<ProtectedRoute><AdminAccounts /></ProtectedRoute>} />
         <Route path="/admin-management/user-roles" element={<ProtectedRoute><UserRoles /></ProtectedRoute>} />
@@ -77,7 +77,7 @@ function App() {
         <Route path="/cookies" element={<CookiePolicy />} />
         <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
       </Routes>
-      </Suspense>
+      <ToastContainer position="top-right" autoClose={3000} />
     </Router>
   );
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
 import { FiFileText, FiFile, FiRefreshCw, FiX, FiShield, FiCheckCircle, FiAlertCircle, FiSave, FiSettings } from "react-icons/fi";
 import api from "../api/axiosConfig";
+import { toast } from 'react-toastify';
 
 const modules = [
   "Group Settings",
@@ -29,22 +30,19 @@ export default function RoleManagement() {
   const [roles, setRoles] = useState([]);
   const [selectedRole, setSelectedRole] = useState("");
   const [permissions, setPermissions] = useState(defaultPermissions);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [loadingPermissions, setLoadingPermissions] = useState(false);
 
   // Fetch roles from API
   const fetchRoles = async () => {
     setLoading(true);
-    setError(null);
     try {
       const token = localStorage.getItem('token');
       const uid = localStorage.getItem('uid') || '1';
       
       if (!token) {
-        setError('Please log in to view role management');
+        toast.error('Please log in to view role management');
         window.location.href = '/login';
         return;
       }
@@ -87,7 +85,7 @@ export default function RoleManagement() {
     } catch (err) {
       console.error('Fetch roles error:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch roles';
-      setError(errorMessage);
+      toast.error(errorMessage);
       
       if (errorMessage.toLowerCase().includes('token') || errorMessage.toLowerCase().includes('unauthorized')) {
         localStorage.removeItem('token');
@@ -238,6 +236,7 @@ export default function RoleManagement() {
       console.log('Save permissions response:', response.data);
       
       if (response.data?.success || response.data?.status === 'success') {
+        toast.success('Permissions saved successfully!');
         return { success: true };
       } else {
         throw new Error(response.data?.message || 'Failed to save permissions');
@@ -245,7 +244,7 @@ export default function RoleManagement() {
     } catch (err) {
       console.error('Save permissions error:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to save permissions';
-      throw new Error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -283,15 +282,14 @@ export default function RoleManagement() {
     e.preventDefault();
     try {
       await saveRolePermissions(selectedRole, permissions);
-    setShowSuccess(true);
-      setError(null);
+      // No need to clear error/success with toast
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     }
   };
 
   const handleSuccessClose = () => {
-    setShowSuccess(false);
+    // No need to clear error/success with toast
   };
 
   if (loading && roles.length === 0) {
@@ -309,39 +307,28 @@ export default function RoleManagement() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-4 py-3">
+      <div className="flex flex-col gap-4 py-3 px-2 sm:px-4">
+        {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-orange-600">Role Management</h1>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <h1 className="text-xl sm:text-2xl font-bold text-orange-600">Role Management</h1>
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <FiShield className="text-indigo-600" />
             <span>Total Roles: {roles.length}</span>
           </div>
         </div>
 
-        {/* Success/Error Messages */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FiAlertCircle />
-              <span>{error}</span>
-            </div>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
-              <FiX size={16} />
-            </button>
-          </div>
-        )}
-
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 max-w-7xl w-full mx-auto">
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto">
           {/* Role Selection Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+            {/* Role Selection Section */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Select Role:</label>
-              <select
-                  className="px-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
-                value={selectedRole}
-                onChange={handleRoleChange}
-                  style={{ minWidth: 200 }}
+                <select
+                  className="w-full sm:w-auto px-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                  value={selectedRole}
+                  onChange={handleRoleChange}
+                  style={{ minWidth: '200px' }}
                   disabled={roles.length === 0 || submitting}
                 >
                   <option value="">Select Role</option>
@@ -356,9 +343,11 @@ export default function RoleManagement() {
               </div>
               
               {selectedRole && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <FiSettings className="text-indigo-600" />
-                  <span>Managing permissions for: <strong>{selectedRole}</strong></span>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <FiSettings className="text-indigo-600" />
+                    <span>Managing permissions for: <strong>{selectedRole}</strong></span>
+                  </div>
                   {loadingPermissions && (
                     <div className="flex items-center gap-1 text-indigo-600">
                       <FiRefreshCw className="animate-spin text-sm" />
@@ -369,13 +358,14 @@ export default function RoleManagement() {
               )}
             </div>
 
-            <div className="flex gap-2 items-center">
+            {/* Refresh Button */}
+            <div className="flex justify-center sm:justify-end">
               <button 
-                className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
+                className="flex items-center justify-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition w-full sm:w-auto"
                 onClick={() => window.location.reload()}
                 title="Refresh Data"
               >
-                <FiRefreshCw /> Refresh
+                <FiRefreshCw /> <span className="hidden sm:inline">Refresh</span>
               </button>
             </div>
           </div>
@@ -395,7 +385,8 @@ export default function RoleManagement() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
+              {/* Desktop Table */}
+              <table className="w-full text-sm border-collapse hidden lg:table">
                 <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 text-gray-700 dark:text-gray-200 sticky top-0 z-10 shadow-sm">
                   <tr className="border-b-2 border-indigo-200 dark:border-indigo-800">
                     <th 
@@ -486,12 +477,76 @@ export default function RoleManagement() {
                 ))}
               </tbody>
             </table>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden">
+              {permissions.map((row, idx) => (
+                <div 
+                  key={row.module}
+                  className={`border-b border-gray-200 dark:border-gray-700 p-4 ${
+                    idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50'
+                  } hover:bg-indigo-50 dark:hover:bg-gray-700 transition-colors`}
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                      {row.module.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">{row.module}</h3>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">View</span>
+                      <input
+                        type="checkbox"
+                        checked={row.view}
+                        onChange={() => handlePermissionChange(idx, "view")}
+                        className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
+                        disabled={submitting}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Add</span>
+                      <input
+                        type="checkbox"
+                        checked={row.add}
+                        onChange={() => handlePermissionChange(idx, "add")}
+                        className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
+                        disabled={submitting}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Edit</span>
+                      <input
+                        type="checkbox"
+                        checked={row.edit}
+                        onChange={() => handlePermissionChange(idx, "edit")}
+                        className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
+                        disabled={submitting}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Delete</span>
+                      <input
+                        type="checkbox"
+                        checked={row.delete}
+                        onChange={() => handlePermissionChange(idx, "delete")}
+                        className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
+                        disabled={submitting}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
               
-              {/* Save Button */}
-              <div className="flex justify-end p-6 border-t border-gray-100 dark:border-gray-700">
-              <button
-                  className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50 shadow-lg"
-                onClick={handleSubmit}
+            {/* Save Button */}
+            <div className="flex justify-center sm:justify-end p-4 sm:p-6 border-t border-gray-100 dark:border-gray-700">
+                              <button
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50 shadow-lg w-full sm:w-auto"
+                  onClick={handleSubmit}
                   disabled={submitting || !selectedRole}
                 >
                   {submitting ? (
@@ -505,34 +560,14 @@ export default function RoleManagement() {
                       Save Permissions
                     </>
                   )}
-              </button>
+                </button>
             </div>
           </div>
           )}
         </div>
         
         {/* Enhanced Success Modal */}
-        {showSuccess && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-md relative">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white mb-4">
-                  <FiCheckCircle size={32} />
-                </div>
-                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">Permissions Saved Successfully!</h2>
-                <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">
-                  Role permissions for <strong>{selectedRole}</strong> have been updated.
-                </p>
-              <button
-                  className="px-6 py-2 rounded-lg font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                onClick={handleSuccessClose}
-              >
-                  Continue
-              </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* No need to clear error/success with toast */}
       </div>
     </DashboardLayout>
   );

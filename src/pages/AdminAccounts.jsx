@@ -4,31 +4,6 @@ import { FiEdit2, FiPlus, FiKey, FiX, FiFileText, FiFile, FiEye, FiRefreshCw, Fi
 import api from "../api/axiosConfig";
 import { toast } from 'react-toastify';
 
-// Default roles fallback
-const defaultUserRoles = [
-  "Admin",
-  "Manager",
-  "Support",
-  "Finance",
-  "HR",
-  "IT",
-  "Super Admin",
-];
-
-// Updated data to match System Users table
-const initialSystemUsers = [
-  { id: 1, name: "Rohit Arya", contact: "7017064745", email: "rohit@30days.in", address: "Shiv Murti Gandhi Chowk Shamli", city: "Shamli", district: "Shamli", state: "Uttar Pradesh", country: "India", role: "Admin", status: "active" },
-  { id: 2, name: "Parveen", contact: "9876543220", email: "parveen@30dats.in", address: "nangloi", city: "delhi", district: "nangloi", state: "Gujarat", country: "India", role: "Manager", status: "active" },
-  { id: 3, name: "naman", contact: "7876467065", email: "arya.rohi13@gmail.com", address: "test", city: "Rohtak", district: "rohtak", state: "Uttar Pradesh", country: "India", role: "Support", status: "active" },
-  { id: 4, name: "sourav", contact: "9876543210", email: "namanjain@30days.in", address: "test address", city: "Delhi", district: "Central Delhi", state: "Delhi", country: "India", role: "Finance", status: "active" },
-  { id: 5, name: "Test User", contact: "1234567890", email: "test@gmail.com", address: "test address line", city: "Mumbai", district: "Mumbai", state: "Maharashtra", country: "India", role: "HR", status: "active" },
-  { id: 6, name: "Amit Kumar", contact: "5551234567", email: "amit@company.com", address: "789 Tech Park", city: "Bangalore", district: "Bangalore Urban", state: "Karnataka", country: "India", role: "IT", status: "active" },
-  { id: 7, name: "Neha Verma", contact: "4445556666", email: "neha@company.com", address: "321 Business Ave", city: "Chennai", district: "Chennai", state: "Tamil Nadu", country: "India", role: "Super Admin", status: "active" },
-  { id: 8, name: "Suresh Patel", contact: "3332221111", email: "suresh@company.com", address: "654 Main Road", city: "Hyderabad", district: "Hyderabad", state: "Telangana", country: "India", role: "Admin", status: "active" },
-  { id: 9, name: "Meena Joshi", contact: "8889990000", email: "meena@company.com", address: "987 Market Lane", city: "Pune", district: "Pune", state: "Maharashtra", country: "India", role: "Manager", status: "active" },
-  { id: 10, name: "Vikas Sharma", contact: "1112223333", email: "vikas@company.com", address: "159 Tech Blvd", city: "Ahmedabad", district: "Ahmedabad", state: "Gujarat", country: "India", role: "Support", status: "active" },
-];
-
 // Role color mapping
 const getRoleColor = (role) => {
   const roleColors = {
@@ -48,7 +23,7 @@ export default function AdminAccounts() {
   const [userRoles, setUserRoles] = useState([]);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [entriesPerPage, setEntriesPerPage] = useState(100);
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -118,7 +93,7 @@ export default function AdminAccounts() {
     } catch (err) {
       console.error('Fetch roles error:', err);
       // Use default roles on error
-      setUserRoles(defaultUserRoles);
+      setUserRoles([]); // Clear roles on error
     } finally {
       setLoading(false);
     }
@@ -377,13 +352,15 @@ export default function AdminAccounts() {
       });
       if (response.data?.status === 'success' || response.data?.message?.toLowerCase().includes('success')) {
         toast.success('System user created successfully!');
-        setShowAddUserModal(false);
+    setShowAddUserModal(false);
         await fetchSystemUsers();
       } else {
         toast.error(response.data?.message || 'Failed to create system user.');
+        setShowAddUserModal(false);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Failed to create system user.');
+      setShowAddUserModal(false);
     }
   };
 
@@ -479,37 +456,39 @@ export default function AdminAccounts() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-4 py-3">
+      <div className="flex flex-col gap-4 py-3 px-2 sm:px-4">
+        {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-orange-600">System Users</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-orange-600">System Users</h1>
           <button
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition w-full sm:w-auto"
             onClick={openAddUserModal}
           >
             <FiPlus /> Add System User
           </button>
         </div>
 
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 max-w-7xl w-full mx-auto">
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto">
           {/* Filter and Export Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+            {/* Filter Section */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter:</label>
                 <div className="relative">
             <input
               type="text"
                     placeholder="Type to filter..."
-                    className="pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                    className="w-full sm:w-auto pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
               value={search}
               onChange={e => setSearch(e.target.value)}
-                    style={{ minWidth: 200 }}
+                    style={{ minWidth: '200px' }}
                   />
                   <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Show:</label>
                 <select
                   className="px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
@@ -523,41 +502,43 @@ export default function AdminAccounts() {
               </div>
             </div>
 
-            <div className="flex gap-2 items-center">
+            {/* Export Buttons */}
+            <div className="flex flex-wrap gap-2 items-center">
               <button 
                 className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
                 onClick={handleExportCopy}
                 title="Copy to Clipboard"
               >
-                <FiCopy /> Copy
+                <FiCopy /> <span className="hidden sm:inline">Copy</span>
               </button>
               <button 
                 className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition"
                 onClick={handleExportExcel}
                 title="Export to Excel"
               >
-                <FiFile /> Excel
+                <FiFile /> <span className="hidden sm:inline">Excel</span>
               </button>
               <button 
                 className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
                 onClick={handleExportCSV}
                 title="Export to CSV"
               >
-                <FiDownload /> CSV
+                <FiDownload /> <span className="hidden sm:inline">CSV</span>
               </button>
               <button
                 className="flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition"
                 onClick={handleExportPDF}
                 title="Export to PDF"
               >
-                <FiFile /> PDF
+                <FiFile /> <span className="hidden sm:inline">PDF</span>
               </button>
             </div>
           </div>
 
           {/* System Users Table */}
           <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
+            {/* Desktop Table */}
+            <table className="w-full text-sm border-collapse hidden lg:table">
               <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 text-gray-700 dark:text-gray-200 sticky top-0 z-10 shadow-sm">
                 <tr className="border-b-2 border-indigo-200 dark:border-indigo-800">
                   <th 
@@ -747,7 +728,7 @@ export default function AdminAccounts() {
                       </span>
                     </td>
                     <td className="p-3">
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-1">
                       <button
                           className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 dark:text-blue-300 dark:hover:bg-gray-700 rounded-lg transition-colors border border-blue-200 hover:border-blue-300"
                           onClick={() => openViewModal(user)}
@@ -768,42 +749,113 @@ export default function AdminAccounts() {
                 ))}
               </tbody>
             </table>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden">
+              {paginated.map((user, idx) => (
+                <div 
+                  key={user.id}
+                  className={`border-b border-gray-200 dark:border-gray-700 p-4 ${
+                    idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50'
+                  } hover:bg-indigo-50 dark:hover:bg-gray-700 transition-colors`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                        {user.name.charAt(0).toUpperCase()}
           </div>
-          {/* Pagination Controls - moved outside scrollable area */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-6 py-4 border-t border-gray-100">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, totalEntries)} of {totalEntries} entries</span>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{user.name}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
               </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 dark:text-blue-300 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        onClick={() => openViewModal(user)}
+                        title="View User"
+                      >
+                        <FiEye size={16} />
+                      </button>
+                      <button
+                        className="p-2 text-green-600 hover:text-green-800 hover:bg-green-100 dark:text-green-300 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        onClick={() => openPasswordModal(user)}
+                        title="Change Password"
+                      >
+                        <FiKey size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Contact:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{user.contact}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Role:</span>
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${getRoleColor(user.role)} dark:bg-indigo-900 dark:text-gray-100 dark:border-indigo-800`}>
+                        {user.role || "No Role"}
+                      </span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-gray-500 dark:text-gray-400">Address:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{user.address}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">City:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{user.city}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">District:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{user.district}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">State:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{user.state}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Country:</span>
+                      <p className="text-gray-900 dark:text-gray-100">{user.country}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Pagination Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 sm:p-6 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-center sm:text-left">Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, totalEntries)} of {totalEntries} entries</span>
+            </div>
+            <div className="flex items-center justify-center sm:justify-end gap-2 sm:gap-4">
                 <button
                   onClick={handlePrev}
                   disabled={currentPage === 1}
-                  className={`px-3 py-1 rounded-lg text-indigo-600 hover:bg-indigo-100 transition ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`px-3 py-2 rounded-lg text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
                   title="Previous"
                 >
                   &lt;
                 </button>
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg">
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
                   Page {currentPage} of {totalPages}
                 </span>
                 <button
                   onClick={handleNext}
                   disabled={currentPage === totalPages}
-                  className={`px-3 py-1 rounded-lg text-indigo-600 hover:bg-indigo-100 transition ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`px-3 py-2 rounded-lg text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
                   title="Next"
                 >
                   &gt;
                 </button>
-              </div>
             </div>
           </div>
         </div>
 
         {/* Enhanced Change Password Modal */}
         {showPasswordModal && selectedUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-md relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8 w-full max-w-md relative">
               <button
                 className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
                 onClick={closePasswordModal}
@@ -816,7 +868,7 @@ export default function AdminAccounts() {
                   {selectedUser.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Manage User</h2>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">Manage User</h2>
                   <p className="text-gray-600 dark:text-gray-300 text-sm">{selectedUser.name}</p>
                 </div>
               </div>
@@ -845,7 +897,7 @@ export default function AdminAccounts() {
                     required
                   />
                 </div>
-                <div className="flex justify-end gap-4 mt-6">
+                <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6">
                   <button
                     type="button"
                     className="px-6 py-2 rounded-lg font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
@@ -867,33 +919,33 @@ export default function AdminAccounts() {
 
         {/* Enhanced Add System User Modal */}
         {showAddUserModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-2xl relative max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black bg-opacity-50 p-2 sm:p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8 w-full max-w-sm sm:max-w-2xl relative my-4 sm:my-0">
               <button
-                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-red-500 transition-colors z-10"
                 onClick={closeAddUserModal}
                 title="Close"
               >
-                <FiX size={24} />
+                <FiX size={20} className="sm:w-6 sm:h-6" />
               </button>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-semibold">
-                  <FiPlus size={24} />
+              <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-5 pr-10 sm:pr-0">
+                <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-semibold">
+                  <FiPlus size={16} className="sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Add System User</h2>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">Create a new system user account</p>
+                  <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800 dark:text-gray-100">Add System User</h2>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Create a new system user account</p>
                 </div>
               </div>
               
-              <form className="grid grid-cols-1 md:grid-cols-2 gap-6" onSubmit={handleAddUserSubmit}>
+              <form className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-5" onSubmit={handleAddUserSubmit}>
                 <div className="md:col-span-2">
-                  <label className="font-medium text-gray-700 dark:text-gray-300">User Role *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">User Role *</label>
                   <select
                     name="role_id"
                     value={addUserForm.role_id}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     required
                   >
                     <option value="">Select Role</option>
@@ -904,124 +956,124 @@ export default function AdminAccounts() {
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300">Full Name *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Full Name *</label>
                   <input
                     type="text"
                     name="name"
                     value={addUserForm.name}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     placeholder="Enter full name"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300">Contact Number *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Contact Number *</label>
                   <input
                     type="tel"
                     name="contact"
                     value={addUserForm.contact}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     placeholder="Enter contact number"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300">Email Address *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Email Address *</label>
                   <input
                     type="email"
                     name="email"
                     value={addUserForm.email}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     placeholder="Enter email address"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300">Password *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Password *</label>
                   <input
                     type="password"
                     name="password"
                     value={addUserForm.password}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     placeholder="Enter password"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300">Confirm Password *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Confirm Password *</label>
                   <input
                     type="password"
                     name="confirmPassword"
                     value={addUserForm.confirmPassword}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     placeholder="Confirm password"
                     required
                   />
                 </div>
                 
                 <div className="md:col-span-2">
-                  <label className="font-medium text-gray-700 dark:text-gray-300">Address</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Address</label>
                   <input
                     type="text"
                     name="address"
                     value={addUserForm.address}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     placeholder="Enter address"
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300">City</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">City</label>
                   <input
                     type="text"
                     name="city"
                     value={addUserForm.city}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     placeholder="Enter city"
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300">District</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">District</label>
                   <input
                     type="text"
                     name="district"
                     value={addUserForm.district}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     placeholder="Enter district"
                   />
                 </div>
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300">Pincode</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Pincode</label>
                   <input
                     type="text"
                     name="pincode"
                     value={addUserForm.pincode}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     placeholder="Enter Pincode"
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300">Country *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Country *</label>
                   <select
                     name="country"
                     value={addUserForm.country || ''}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     required
                   >
                     <option value="">Select Country</option>
@@ -1031,12 +1083,12 @@ export default function AdminAccounts() {
                   </select>
                 </div>
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300">State *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">State *</label>
                   <select
                     name="state"
                     value={addUserForm.state || ''}
                     onChange={handleAddUserChange}
-                    className="w-full px-4 py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors"
+                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
                     required
                   >
                     <option value="">Select State</option>
@@ -1046,17 +1098,17 @@ export default function AdminAccounts() {
                   </select>
                 </div>
                 
-                <div className="md:col-span-2 flex justify-end gap-4 mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+                <div className="md:col-span-2 flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-4 sm:mt-5 pt-4 sm:pt-5 border-t border-gray-200 dark:border-gray-600">
                   <button
                     type="button"
-                    className="px-6 py-2 rounded-lg font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                    className="px-6 py-2.5 rounded-lg font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors text-sm sm:text-base"
                     onClick={closeAddUserModal}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors"
+                    className="px-6 py-2.5 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors text-sm sm:text-base"
                   >
                     Create User
                   </button>
@@ -1068,8 +1120,8 @@ export default function AdminAccounts() {
 
         {/* View User Modal */}
         {showViewModal && selectedUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-lg relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8 w-full max-w-lg relative">
               <button
                 className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
                 onClick={closeViewModal}
@@ -1078,15 +1130,15 @@ export default function AdminAccounts() {
                 <FiX size={24} />
               </button>
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-xl">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-lg sm:text-xl">
                   {selectedUser.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{selectedUser.name}</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">{selectedUser.name}</h2>
                   <p className="text-gray-600 dark:text-gray-400">System User Profile</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+              <div className="grid grid-cols-1 gap-4 sm:gap-6 text-sm">
                 <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg space-y-2">
                   <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-2 border-b dark:border-gray-600 pb-2">User Details</h3>
                   <p><strong className="text-gray-600 dark:text-gray-300">Contact:</strong> <span className="text-gray-800 dark:text-gray-100">{selectedUser.contact}</span></p>

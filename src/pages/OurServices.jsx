@@ -5,6 +5,7 @@ import hrmImg from "../assets/hrm.jpg";
 import startupImg from "../assets/startup.jpg";
 import ourServicesHero from "../assets/ourservices-hero.jpg";
 import { FiDatabase, FiUsers, FiBarChart2, FiShield, FiLifeBuoy, FiZap, FiCheckCircle } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const services = [
   {

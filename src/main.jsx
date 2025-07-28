@@ -7,7 +7,7 @@ import { ContactsProvider } from "./context/ContactsContext.jsx";
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ContactsProvider>
-      <App />
+    <App />
     </ContactsProvider>
   </React.StrictMode>
 );
