@@ -344,7 +344,7 @@ export default function CompanyAdditionalFields() {
                 </div>
 
                 {/* Fields Display */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 sm:gap-6">
                   {Array.from({ length: 10 }).map((_, i) => {
                     const fieldKey = `companyField${i + 1}`;
                     const fieldValue = data[fieldKey];
@@ -396,7 +396,7 @@ export default function CompanyAdditionalFields() {
                 </div>
 
                 {/* Form Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 sm:gap-6">
                   {Array.from({ length: 10 }).map((_, i) => {
                     const fieldKey = `companyField${i + 1}`;
                     const isRequired = i < 5;

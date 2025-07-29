@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
-import { FiEdit2, FiPlus, FiFileText, FiFile, FiX, FiTrash2, FiRefreshCw, FiUser, FiShield, FiCheckCircle, FiAlertCircle, FiCopy, FiDownload } from "react-icons/fi";
+import { FiEdit2, FiPlus, FiFileText, FiFile, FiX, FiTrash2, FiUser, FiShield, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
 import api from "../api/axiosConfig";
 import { toast } from 'react-toastify';
+import ExportButtons from "../utils/ExportButtons";
 
 export default function UserRoles() {
   const [roles, setRoles] = useState([]);
@@ -20,8 +21,8 @@ export default function UserRoles() {
   const [sortDirection, setSortDirection] = useState("asc");
 
   // Fetch roles from API
-  const fetchRoles = async () => {
-    setLoading(true);
+  const fetchRoles = async (isFirst = false) => {
+    if (isFirst) setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const uid = localStorage.getItem('uid') || '1';
@@ -62,7 +63,7 @@ export default function UserRoles() {
         window.location.href = '/login';
       }
     } finally {
-      setLoading(false);
+      if (isFirst) setLoading(false);
     }
   };
 
@@ -196,10 +197,10 @@ export default function UserRoles() {
 
   // Load roles on component mount
   useEffect(() => {
-    fetchRoles();
+    fetchRoles(true);
     
     // Set up polling every 30 seconds to keep data fresh
-    const interval = setInterval(fetchRoles, 30000);
+    const interval = setInterval(() => fetchRoles(false), 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -294,51 +295,14 @@ export default function UserRoles() {
     }
   };
 
-  // Export handlers
-  const handleExportCopy = () => {
-    const tableData = filtered.map(role => role.role).join('\n');
-    const headers = "Role";
-    const fullData = headers + '\n' + tableData;
-    
-    navigator.clipboard.writeText(fullData).then(() => {
-      toast.success("Data copied to clipboard!");
-      setTimeout(() => toast.dismiss(), 3000);
-    });
-  };
 
-  const handleExportCSV = () => {
-    const headers = ["Role"];
-    const csvData = filtered.map(role => [role.role]);
-    
-    let csvContent = "data:text/csv;charset=utf-8," + [headers, ...csvData].map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "user_roles.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast.success("CSV exported successfully!");
-    setTimeout(() => toast.dismiss(), 3000);
-  };
-
-  const handleExportExcel = () => {
-    toast.info("Excel export functionality would be implemented here!");
-    setTimeout(() => toast.dismiss(), 3000);
-  };
-
-  const handleExportPDF = () => {
-    toast.info("PDF export functionality would be implemented here!");
-    setTimeout(() => toast.dismiss(), 3000);
-  };
 
   if (loading && roles.length === 0) {
     return (
       <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="flex items-center gap-3">
-            <FiRefreshCw className="animate-spin text-indigo-600 text-2xl" />
+            <div className="animate-spin text-indigo-600 text-2xl">⏳</div>
             <p className="text-indigo-700">Loading user roles...</p>
           </div>
         </div>
@@ -361,74 +325,63 @@ export default function UserRoles() {
         <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto">
           {/* Filter and Export Controls */}
           <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
-            {/* Filter Section */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter:</label>
-                <div className="relative">
-            <input
-              type="text"
-                    placeholder="Type to filter..."
-                    className="w-full sm:w-auto pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-                    style={{ minWidth: '200px' }}
-                  />
-                  <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            {/* Filter and Export Buttons in Single Line */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter:</label>
+                  <div className="relative">
+              <input
+                type="text"
+                      placeholder="Type to filter..."
+                      className="w-full sm:w-auto pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                      style={{ minWidth: '200px' }}
+                    />
+                    <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Show:</label>
+                  <select
+                    className="px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                    value={entriesPerPage}
+                    onChange={handleEntriesChange}
+                  >
+                    {[10, 25, 50, 100].map(num => (
+                      <option key={num} value={num}>{num}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Show:</label>
-                <select
-                  className="px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
-                  value={entriesPerPage}
-                  onChange={handleEntriesChange}
+              {/* Export and Add Buttons */}
+              <div className="flex flex-wrap gap-2 items-center">
+                <ExportButtons
+                  data={filtered}
+                  dataType="roles"
+                  onRefresh={() => fetchRoles(false)}
+                  filename="user_roles"
+                  title="User Roles Report"
+                  refreshMessage="User roles refreshed successfully!"
+                  customConfig={{
+                    headers: ["Role Name"],
+                    fields: ["role"],
+                    fieldMapping: {
+                      "Role Name": "role"
+                    }
+                  }}
+                />
+                <button
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition w-full sm:w-auto"
+                  onClick={openAddModal}
+                  disabled={submitting}
                 >
-                  {[10, 25, 50, 100].map(num => (
-                    <option key={num} value={num}>{num}</option>
-                  ))}
-                </select>
+                  <FiPlus /> Add Role
+                </button>
               </div>
-            </div>
-
-            {/* Export and Add Buttons */}
-            <div className="flex flex-wrap gap-2 items-center">
-              <button 
-                className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
-                onClick={handleExportCopy}
-                title="Copy to Clipboard"
-              >
-                <FiCopy /> <span className="hidden sm:inline">Copy</span>
-              </button>
-              <button 
-                className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition"
-                onClick={handleExportExcel}
-                title="Export to Excel"
-              >
-                <FiFile /> <span className="hidden sm:inline">Excel</span>
-              </button>
-              <button 
-                className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
-                onClick={handleExportCSV}
-                title="Export to CSV"
-              >
-                <FiDownload /> <span className="hidden sm:inline">CSV</span>
-              </button>
-              <button 
-                className="flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition"
-                onClick={handleExportPDF}
-                title="Export to PDF"
-              >
-                <FiFile /> <span className="hidden sm:inline">PDF</span>
-              </button>
-              <button
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition w-full sm:w-auto"
-                onClick={openAddModal}
-                disabled={submitting}
-              >
-                <FiPlus /> Add Role
-              </button>
             </div>
           </div>
 

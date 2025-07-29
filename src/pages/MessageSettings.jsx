@@ -16,33 +16,7 @@ export default function MessageSettings() {
   const [form, setForm] = useState(initialData);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [docTypes, setDocTypes] = useState([]);
 
-  // Fetch document types from API
-  useEffect(() => {
-    const fetchDocTypes = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const uid = localStorage.getItem('uid');
-        if (!token || !uid) {
-          throw new Error('Authentication required.');
-        }
-        const response = await api.post('/UserDetails/getdocType', {}, {
-          headers: {
-            'Client-Service': 'COHAPPRT',
-            'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-            'uid': uid,
-            'token': token,
-            'rurl': 'login.etribes.in',
-          }
-        });
-        setDocTypes(response.data?.data || []);
-      } catch (err) {
-        console.error('Fetch doc types error:', err);
-      }
-    };
-    fetchDocTypes();
-  }, []);
 
   // Fetch message settings from API
   const fetchMessageSettings = async () => {

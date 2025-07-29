@@ -13,7 +13,7 @@ const modules = [
   "Account Password Change",
   "Message Settings",
   "Membership Plans",
-  "Membership Management",
+  "Members Services",
   "Contacts Management",
   "Events Management",
 ];
@@ -307,28 +307,29 @@ export default function RoleManagement() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-4 py-3 px-2 sm:px-4">
-        {/* Header Section */}
+      <div className="flex flex-col gap-4 py-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-orange-600">Role Management</h1>
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <h1 className="text-2xl font-bold text-orange-600">Role Management</h1>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
             <FiShield className="text-indigo-600" />
             <span>Total Roles: {roles.length}</span>
           </div>
         </div>
 
-        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto">
+        {/* Success/Error Messages */}
+        {/* No need to clear error/success with toast */}
+
+        <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 max-w-7xl w-full mx-auto">
           {/* Role Selection Controls */}
-          <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
-            {/* Role Selection Section */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Select Role:</label>
+          <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex items-center gap-4">
+                <label className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Select Role:</label>
                 <select
-                  className="w-full sm:w-auto px-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                  className="px-2 sm:px-4 py-1 sm:py-2 border rounded-lg text-xs sm:text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                  style={{ minWidth: '150px', maxWidth: '200px' }}
                   value={selectedRole}
                   onChange={handleRoleChange}
-                  style={{ minWidth: '200px' }}
                   disabled={roles.length === 0 || submitting}
                 >
                   <option value="">Select Role</option>
@@ -343,29 +344,28 @@ export default function RoleManagement() {
               </div>
               
               {selectedRole && (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  <div className="flex items-center gap-2">
-                    <FiSettings className="text-indigo-600" />
-                    <span>Managing permissions for: <strong>{selectedRole}</strong></span>
-                  </div>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                  <FiSettings className="text-indigo-600 flex-shrink-0" size={14} />
+                  <span className="text-xs sm:text-sm">Managing: <strong>{selectedRole}</strong></span>
                   {loadingPermissions && (
                     <div className="flex items-center gap-1 text-indigo-600">
-                      <FiRefreshCw className="animate-spin text-sm" />
-                      <span className="text-xs">Loading permissions...</span>
+                      <FiRefreshCw className="animate-spin text-xs sm:text-sm" />
+                      <span className="text-xs">Loading...</span>
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Refresh Button */}
-            <div className="flex justify-center sm:justify-end">
+            {/* Refresh Button - Always in right corner for all screen sizes */}
+            <div className="flex gap-2 items-center">
               <button 
-                className="flex items-center justify-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition w-full sm:w-auto"
+                className="flex items-center gap-1 bg-blue-500 text-white px-2 sm:px-3 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-600 transition"
                 onClick={() => window.location.reload()}
                 title="Refresh Data"
               >
-                <FiRefreshCw /> <span className="hidden sm:inline">Refresh</span>
+                <FiRefreshCw size={14} />
+                <span>Refresh</span>
               </button>
             </div>
           </div>
@@ -384,9 +384,9 @@ export default function RoleManagement() {
               <p className="text-sm text-gray-400 mt-2">Please select a role from the dropdown above to view and manage its permissions.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              {/* Desktop Table */}
-              <table className="w-full text-sm border-collapse hidden lg:table">
+            <>
+              <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
                 <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 text-gray-700 dark:text-gray-200 sticky top-0 z-10 shadow-sm">
                   <tr className="border-b-2 border-indigo-200 dark:border-indigo-800">
                     <th 
@@ -477,76 +477,12 @@ export default function RoleManagement() {
                 ))}
               </tbody>
             </table>
-
-            {/* Mobile Cards */}
-            <div className="lg:hidden">
-              {permissions.map((row, idx) => (
-                <div 
-                  key={row.module}
-                  className={`border-b border-gray-200 dark:border-gray-700 p-4 ${
-                    idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50'
-                  } hover:bg-indigo-50 dark:hover:bg-gray-700 transition-colors`}
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                      {row.module.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">{row.module}</h3>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">View</span>
-                      <input
-                        type="checkbox"
-                        checked={row.view}
-                        onChange={() => handlePermissionChange(idx, "view")}
-                        className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
-                        disabled={submitting}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Add</span>
-                      <input
-                        type="checkbox"
-                        checked={row.add}
-                        onChange={() => handlePermissionChange(idx, "add")}
-                        className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
-                        disabled={submitting}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Edit</span>
-                      <input
-                        type="checkbox"
-                        checked={row.edit}
-                        onChange={() => handlePermissionChange(idx, "edit")}
-                        className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
-                        disabled={submitting}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Delete</span>
-                      <input
-                        type="checkbox"
-                        checked={row.delete}
-                        onChange={() => handlePermissionChange(idx, "delete")}
-                        className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
-                        disabled={submitting}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
               
-            {/* Save Button */}
-            <div className="flex justify-center sm:justify-end p-4 sm:p-6 border-t border-gray-100 dark:border-gray-700">
-                              <button
-                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50 shadow-lg w-full sm:w-auto"
-                  onClick={handleSubmit}
+              {/* Save Button */}
+              <div className="flex justify-end p-6 border-t border-gray-100 dark:border-gray-700">
+              <button
+                  className="flex items-center gap-2 px-6 py-3 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50 shadow-lg"
+                onClick={handleSubmit}
                   disabled={submitting || !selectedRole}
                 >
                   {submitting ? (
@@ -560,9 +496,93 @@ export default function RoleManagement() {
                       Save Permissions
                     </>
                   )}
-                </button>
+              </button>
             </div>
           </div>
+
+          {/* Mobile Permissions Cards View */}
+          <div className="lg:hidden p-4 sm:p-6 space-y-4">
+            {permissions.map((row, idx) => (
+              <div key={row.module} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-800 dark:to-purple-900 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-medium text-white">
+                      {row.module.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{row.module}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Module #{idx + 1}</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">View</span>
+                    <input
+                      type="checkbox"
+                      checked={row.view}
+                      onChange={() => handlePermissionChange(idx, "view")}
+                      className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Add</span>
+                    <input
+                      type="checkbox"
+                      checked={row.add}
+                      onChange={() => handlePermissionChange(idx, "add")}
+                      className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Edit</span>
+                    <input
+                      type="checkbox"
+                      checked={row.edit}
+                      onChange={() => handlePermissionChange(idx, "edit")}
+                      className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Delete</span>
+                    <input
+                      type="checkbox"
+                      checked={row.delete}
+                      onChange={() => handlePermissionChange(idx, "delete")}
+                      className="h-5 w-5 text-indigo-600 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 focus:ring-indigo-500 focus:ring-2 transition-colors"
+                      disabled={submitting}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {/* Mobile Save Button */}
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+              <button
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50 shadow-lg"
+                onClick={handleSubmit}
+                disabled={submitting || !selectedRole}
+              >
+                {submitting ? (
+                  <>
+                    <FiRefreshCw className="animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <FiSave />
+                    Save Permissions
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+            </>
           )}
         </div>
         

@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
-import { FiDownload, FiFilter, FiEdit2, FiTrash2, FiChevronDown, FiChevronUp, FiFileText, FiFile, FiX, FiCopy, FiPlus, FiUser, FiMail, FiPhone, FiMapPin, FiRefreshCw, FiSearch } from "react-icons/fi";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { FiDownload, FiFilter, FiEdit2, FiTrash2, FiChevronDown, FiChevronUp, FiFileText, FiFile, FiX, FiCopy, FiPlus, FiUser, FiMail, FiPhone, FiMapPin, FiSearch } from "react-icons/fi";
 import { useContacts } from "../context/ContactsContext";
 import { toast } from "react-toastify";
+import ExportButtons from "../utils/ExportButtons";
 
 export default function ImportantContactsPage() {
   const { contactsData, loading, error, addContact, editContact: editContactAPI, deleteContact: deleteContactAPI, fetchContacts } = useContacts();
@@ -132,79 +130,7 @@ export default function ImportantContactsPage() {
   };
 
   // Export handlers
-  const handleExportCSV = () => {
-    const headers = ["Department", "Name", "Contact", "Email", "Address"];
-    const rows = contactsData.map(c => [c.dept, c.name, c.contact, c.email, c.address]);
-    let csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "important_contacts.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Contacts exported to CSV!");
-  };
 
-  const handleExportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(
-      contactsData.map(c => ({
-        Department: c.dept,
-        Name: c.name,
-        Contact: c.contact,
-        Email: c.email,
-        Address: c.address,
-      }))
-    );
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Important Contacts");
-    XLSX.writeFile(wb, "important_contacts.xlsx");
-    toast.success("Contacts exported to Excel!");
-  };
-
-  const handleExportPDF = () => {
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "pt",
-      format: "a4"
-    });
-    const headers = [[
-      "Department", "Name", "Contact", "Email", "Address"
-    ]];
-    const rows = contactsData.map(c => [
-      c.dept,
-      c.name,
-      c.contact,
-      c.email,
-      c.address,
-    ]);
-    try {
-      autoTable(doc, {
-        head: headers,
-        body: rows,
-        startY: 20,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [41, 128, 185] }
-      });
-      doc.save("important_contacts.pdf");
-      toast.success("Contacts exported to PDF!");
-    } catch (err) {
-      toast.error("PDF export failed: " + err.message);
-    }
-  };
-
-  const handleCopyToClipboard = () => {
-    const data = contactsData.map(c => 
-      `${c.dept},${c.name},${c.contact},${c.email},${c.address}`
-    ).join('\n');
-    navigator.clipboard.writeText(data);
-    toast.success("All contacts copied to clipboard!");
-  };
-
-  const handleRefresh = () => {
-    fetchContacts();
-    toast.info("Refreshing contacts...");
-  };
 
   if (loading) {
     return (
@@ -241,52 +167,53 @@ export default function ImportantContactsPage() {
         <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto">
           {/* Controls */}
           <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
-            {/* Search and Info */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="relative flex-1">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search by name..."
-                  className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
+            {/* Search, Info, and Action Buttons in Single Line */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="relative flex-1">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by name..."
+                    className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <span>Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, totalEntries)} of {totalEntries} entries</span>
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2 items-center">
+                <ExportButtons
+                  data={contactsData}
+                  dataType="contacts"
+                  onRefresh={() => fetchContacts()}
+                  filename="important_contacts"
+                  title="Important Contacts Report"
+                  refreshMessage="Contacts refreshed successfully!"
+                  customConfig={{
+                    headers: ["Department", "Name", "Contact", "Email", "Address"],
+                    fields: ["dept", "name", "contact", "email", "address"],
+                    fieldMapping: {
+                      "Department": "dept",
+                      "Name": "name",
+                      "Contact": "contact",
+                      "Email": "email",
+                      "Address": "address"
+                    }
+                  }}
                 />
+                <button
+                  className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition w-full sm:w-auto justify-center"
+                  onClick={() => setShowAddContactModal(true)}
+                >
+                  <FiPlus />
+                  Add Contact
+                </button>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <span>Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, totalEntries)} of {totalEntries} entries</span>
-              </div>
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-2 items-center">
-              <button className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition" onClick={handleRefresh} title="Refresh Data">
-                <FiRefreshCw /> 
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
-              <button className="flex items-center gap-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition" onClick={handleCopyToClipboard} title="Copy to Clipboard">
-                <FiCopy /> 
-                <span className="hidden sm:inline">Copy</span>
-              </button>
-              <button className="flex items-center gap-1 bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition" onClick={handleExportCSV} title="Export CSV">
-                <FiDownload /> 
-                <span className="hidden sm:inline">CSV</span>
-              </button>
-              <button className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition" onClick={handleExportExcel} title="Export Excel">
-                <FiFile /> 
-                <span className="hidden sm:inline">Excel</span>
-              </button>
-              <button className="flex items-center gap-1 bg-rose-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition" onClick={handleExportPDF} title="Export PDF">
-                <FiFile /> 
-                <span className="hidden sm:inline">PDF</span>
-              </button>
-              <button
-                className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition w-full sm:w-auto justify-center"
-                onClick={() => setShowAddContactModal(true)}
-              >
-                <FiPlus />
-                Add Contact
-              </button>
             </div>
           </div>
           {/* Table - Desktop View */}

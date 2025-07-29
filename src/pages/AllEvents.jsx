@@ -1,656 +1,86 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
-import { FiPlus, FiFileText, FiFile, FiEye, FiX, FiCalendar, FiMapPin, FiClock, FiSearch, FiFilter, FiDownload, FiCopy, FiEdit2, FiTrash2, FiRefreshCw, FiImage } from "react-icons/fi";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import api from "../api/axiosConfig";
+import { FiPlus, FiFileText, FiFile, FiEye, FiX, FiCalendar, FiMapPin, FiClock, FiSearch, FiFilter, FiEdit2, FiTrash2, FiImage } from "react-icons/fi";
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
-import { toast } from 'react-toastify';
-
-// Helper function to decode HTML entities
-function decodeHtml(html) {
-  const txt = document.createElement('textarea');
-  txt.innerHTML = html;
-  return txt.value;
-}
-
-// Helper function to strip HTML tags
-function stripHtml(html) {
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
-  return tmp.textContent || tmp.innerText || '';
-}
-
-// Helper to get CKEditor contentsCss based on dark mode
-function getCKEditorContentsCss() {
-  const isDark = document.documentElement.classList.contains('dark');
-  return isDark
-    ? [
-        'https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/styles.css',
-        `
-        body, .ck-editor__editable, .ck-content {
-          background: #1a2233 !important;
-          color: #000 !important;
-        }
-        .ck.ck-editor__main > .ck-editor__editable:not(.ck-focused) {
-          background: #1a2233 !important;
-          color: #000 !important;
-        }
-        .ck-placeholder, .ck-content ::placeholder {
-          color: #000 !important;
-          opacity: 1 !important;
-        }
-        `
-      ]
-    : [
-        'https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/styles.css',
-        `
-        body, .ck-editor__editable, .ck-content {
-          background: #fff !important;
-          color: #111827 !important;
-        }
-        .ck-placeholder, .ck-content ::placeholder {
-          color: #111827 !important;
-          opacity: 1 !important;
-        }
-        `
-      ];
-}
+import ExportButtons from "../utils/ExportButtons";
+import { useAllEvents } from "../hooks/useAllEvents";
 
 export default function AllEvents() {
-  const [events, setEvents] = useState([]);
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const [showAddEventModal, setShowAddEventModal] = useState(false);
-  const [showViewEventModal, setShowViewEventModal] = useState(false);
-  const [selectedEventIdx, setSelectedEventIdx] = useState(null);
-  const [addEventForm, setAddEventForm] = useState({
-    event: "",
-    agenda: "",
-    venue: "",
-    date: "",
-    time: "",
-    reminder: "Yes",
-    sendReminderTo: "Only Approved Members",
-    invitationImage: null
-  });
-  const [loading, setLoading] = useState(true);
-  const [saveLoading, setSaveLoading] = useState(false);
-  const [formErrors, setFormErrors] = useState({});
-  // Add state to control form visibility
-  const [showAddEventForm, setShowAddEventForm] = useState(false);
-  // 1. Add state for Edit Event modal and form
-  const [showEditEventModal, setShowEditEventModal] = useState(false);
-  const [editEventForm, setEditEventForm] = useState({
-    id: '',
-    event: '',
-    agenda: '',
-    venue: '',
-    date: '',
-    time: '',
-    invitationImage: null,
-    imageUrl: '',
-  });
-  const [editLoading, setEditLoading] = useState(false);
-  const [editFormErrors, setEditFormErrors] = useState({});
-  // 1. Add state for delete loading and error
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [sortField, setSortField] = useState('event');
-  const [sortDirection, setSortDirection] = useState('asc');
-  const [imageError, setImageError] = useState(false);
-
-  useEffect(() => {
-    const fetchEvents = async () => {
-      setLoading(true);
-      // toast.dismiss();
-      try {
-        const token = localStorage.getItem('token');
-        const uid = localStorage.getItem('uid');
-        const response = await api.post('/event/index', {}, {
-          headers: {
-            'Client-Service': 'COHAPPRT',
-            'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-            'uid': uid,
-            'token': token,
-            'rurl': 'login.etribes.in',
-            'Content-Type': 'application/json',
-          }
-        });
-        let backendEvents = [];
-        if (Array.isArray(response.data?.data?.event)) {
-          backendEvents = response.data.data.event;
-        } else if (Array.isArray(response.data?.data?.events)) {
-          backendEvents = response.data.data.events;
-        } else if (Array.isArray(response.data?.data)) {
-          backendEvents = response.data.data;
-        } else if (Array.isArray(response.data)) {
-          backendEvents = response.data;
-        } else if (response.data?.data && typeof response.data.data === 'object') {
-          backendEvents = Object.values(response.data.data);
-        } else {
-          backendEvents = [];
-        }
-        const BASE_URL = "https://api.etribes.in";
-        const mappedEvents = backendEvents.map((e, idx) => ({
-          id: e.id || idx,
-          event: e.event_title || e.event || e.title || e.name || "",
-          agenda: e.event_description || e.agenda || e.description || "",
-          venue: e.event_venue || e.venue || e.location || "",
-          datetime: e.event_date && e.event_time
-            ? `${e.event_date}T${e.event_time}`
-            : e.datetime || e.date_time || e.date || "",
-          imageUrl: e.event_image
-            ? (e.event_image.startsWith("http") ? e.event_image : BASE_URL + e.event_image)
-            : (e.image || e.imageUrl || ""),
-        }));
-        setEvents(mappedEvents);
-      } catch (err) {
-        toast.error('Failed to fetch all events');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEvents();
-    // Removed setInterval polling
-    // Only call fetchEvents after CRUD operations
-  }, []);
-
-  // Filtered, sorted and paginated data
-  const filtered = events.filter(e => 
-    e.event.toLowerCase().includes(search.toLowerCase()) ||
-    e.agenda.toLowerCase().includes(search.toLowerCase()) ||
-    e.venue.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const sorted = [...filtered].sort((a, b) => {
-    let aVal = a[sortField];
-    let bVal = b[sortField];
+  const {
+    // State
+    events,
+    search,
+    currentPage,
+    entriesPerPage,
+    showAddEventModal,
+    showViewEventModal,
+    selectedEventIdx,
+    addEventForm,
+    loading,
+    saveLoading,
+    formErrors,
+    showAddEventForm,
+    showEditEventModal,
+    editEventForm,
+    editLoading,
+    editFormErrors,
+    deleteLoading,
+    sortField,
+    sortDirection,
+    imageError,
+    filtered,
+    sorted,
+    totalEntries,
+    totalPages,
+    startIdx,
+    paginated,
     
-    if (sortField === "datetime") {
-      aVal = new Date(aVal || 0);
-      bVal = new Date(bVal || 0);
-    } else {
-      aVal = aVal?.toLowerCase() || "";
-      bVal = bVal?.toLowerCase() || "";
-    }
+    // Actions
+    setSearch,
+    setCurrentPage,
+    setEntriesPerPage,
+    setAddEventForm,
+    setFormErrors,
+    setEditEventForm,
+    setEditFormErrors,
+    setImageError,
     
-    if (sortDirection === "asc") {
-      return aVal > bVal ? 1 : -1;
-    } else {
-      return aVal < bVal ? 1 : -1;
-    }
-  });
+    // Functions
+    fetchEvents,
+    handlePrev,
+    handleNext,
+    handleEntriesChange,
+    handleSort,
+    getSortIcon,
+    openAddEventModal,
+    closeAddEventModal,
+    handleAddEventChange,
+    handleAgendaChange,
+    validateForm,
+    handleAddEventSubmit,
+    openViewEventModal,
+    closeViewEventModal,
+    handleShowAddEventForm,
+    handleHideAddEventForm,
+    openEditEventModal,
+    closeEditEventModal,
+    handleEditEventChange,
+    handleEditAgendaChange,
+    validateEditForm,
+    handleEditEventSubmit,
+    handleDeleteEvent,
+    getCKEditorContentsCss,
+  } = useAllEvents();
 
-  const totalEntries = sorted.length;
-  const totalPages = Math.ceil(totalEntries / entriesPerPage);
-  const startIdx = (currentPage - 1) * entriesPerPage;
-  const paginated = sorted.slice(startIdx, startIdx + entriesPerPage);
 
-  const handlePrev = () => setCurrentPage(p => Math.max(1, p - 1));
-  const handleNext = () => setCurrentPage(p => Math.min(totalPages, p + 1));
-  const handleEntriesChange = e => {
-    setEntriesPerPage(Number(e.target.value));
-    setCurrentPage(1);
-  };
-
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
-    }
-  };
-
-  const getSortIcon = (field) => {
-    if (sortField !== field) return null;
-    return sortDirection === "asc" ? "↑" : "↓";
-  };
-
-  // Add Event Modal
-  const openAddEventModal = () => {
-    setAddEventForm({ event: "", agenda: "", venue: "", datetime: "", imageUrl: "" });
-    setFormErrors({}); // Clear previous errors
-    setShowAddEventModal(true);
-  };
-  const closeAddEventModal = () => setShowAddEventModal(false);
-  const handleAddEventChange = (e) => {
-    const { name, value, files } = e.target;
-    if (name === 'invitationImage') {
-      setAddEventForm({ ...addEventForm, invitationImage: files[0] });
-    } else {
-      setAddEventForm({ ...addEventForm, [name]: value });
-      setFormErrors({ ...formErrors, [name]: undefined });
-    }
-  };
-  const handleAgendaChange = (event, editor) => {
-    const data = editor.getData();
-    setAddEventForm({ ...addEventForm, agenda: data });
-    setFormErrors({ ...formErrors, agenda: undefined });
-  };
-  const validateForm = () => {
-    const errors = {};
-    if (!addEventForm.event.trim()) errors.event = 'The Event Title field is required.';
-    if (!addEventForm.agenda || !addEventForm.agenda.replace(/<[^>]*>/g, '').trim()) errors.agenda = 'The Agenda field is required.';
-    if (!addEventForm.venue.trim()) errors.venue = 'The Venue field is required.';
-    if (!addEventForm.date.trim()) errors.date = 'The Date field is required.';
-    if (!addEventForm.time.trim()) errors.time = 'The Time field is required.';
-    return errors;
-  };
-  const handleAddEventSubmit = async (e) => {
-    e.preventDefault();
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      toast.error(Object.values(errors).join('\n'));
-      setShowAddEventForm(false);
-      setTimeout(() => toast.dismiss(), 3000);
-      return;
-    }
-    setSaveLoading(true);
-    try {
-      // Prepare payload for backend (match cURL)
-      const token = localStorage.getItem('token');
-      const uid = localStorage.getItem('uid');
-      const formData = new FormData();
-      formData.append('event_title', addEventForm.event);
-      formData.append('event_description', addEventForm.agenda);
-      formData.append('event_venue', addEventForm.venue);
-      formData.append('event_time', addEventForm.time);
-      formData.append('event_date', addEventForm.date);
-      if (addEventForm.invitationImage) {
-        formData.append('event_image', addEventForm.invitationImage);
-      }
-      await fetch('/api/event/add', {
-        method: 'POST',
-        headers: {
-          'Client-Service': 'COHAPPRT',
-          'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-          'uid': uid,
-          'token': token,
-          'rurl': 'login.etribes.in',
-          'Authorization': 'Bearer ' + (localStorage.getItem('authToken') || ''),
-        },
-        credentials: 'include',
-        body: formData,
-      });
-      toast.success('Event added successfully!');
-      setAddEventForm({
-        event: "",
-        agenda: "",
-        venue: "",
-        date: "",
-        time: "",
-        reminder: "Yes",
-        sendReminderTo: "Only Approved Members",
-        invitationImage: null
-      });
-      setShowAddEventForm(false);
-      setTimeout(() => toast.dismiss(), 3000);
-      // Refresh events after adding
-      setLoading(true);
-      try {
-        const response = await api.post('/event/index', {}, {
-          headers: {
-            'Client-Service': 'COHAPPRT',
-            'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-            'uid': uid,
-            'token': token,
-            'rurl': 'login.etribes.in',
-            'Content-Type': 'application/json',
-          }
-        });
-        let backendEvents = [];
-        if (Array.isArray(response.data?.data?.event)) {
-          backendEvents = response.data.data.event;
-        } else if (Array.isArray(response.data?.data?.events)) {
-          backendEvents = response.data.data.events;
-        } else if (Array.isArray(response.data?.data)) {
-          backendEvents = response.data.data;
-        } else if (Array.isArray(response.data)) {
-          backendEvents = response.data;
-        } else if (response.data?.data && typeof response.data.data === 'object') {
-          backendEvents = Object.values(response.data.data);
-        } else {
-          backendEvents = [];
-        }
-        const BASE_URL = "https://api.etribes.in";
-        const mappedEvents = backendEvents.map((e, idx) => ({
-          id: e.id || idx,
-          event: e.event_title || e.event || e.title || e.name || "",
-          agenda: e.event_description || e.agenda || e.description || "",
-          venue: e.event_venue || e.venue || e.location || "",
-          datetime: e.event_date && e.event_time
-            ? `${e.event_date}T${e.event_time}`
-            : e.datetime || e.date_time || e.date || "",
-          imageUrl: e.event_image
-            ? (e.event_image.startsWith("http") ? e.event_image : BASE_URL + e.event_image)
-            : (e.image || e.imageUrl || ""),
-        }));
-        setEvents(mappedEvents);
-      } finally {
-        setLoading(false);
-      }
-    } catch (err) {
-      toast.error('Failed to add event');
-      setShowAddEventForm(false);
-    } finally {
-      setSaveLoading(false);
-    }
-  };
-
-  // View Event Modal
-  const openViewEventModal = (idx) => {
-    setSelectedEventIdx(idx);
-    setImageError(false);
-    setShowViewEventModal(true);
-  };
-  const closeViewEventModal = () => setShowViewEventModal(false);
-
-  // Export Handlers (CSV, Excel, PDF)
-  const handleExportCSV = () => {
-    if (!events.length) return;
-    const headers = ["Event", "Agenda", "Venue", "Date & Time"];
-    const rows = events.map(e => [
-      e.event,
-      e.agenda,
-      e.venue,
-      e.datetime ? new Date(e.datetime).toLocaleString() : "",
-    ]);
-    let csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "all_events.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Events exported to CSV!');
-  };
-
-  const handleExportExcel = () => {
-    if (!events.length) return;
-    const ws = XLSX.utils.json_to_sheet(
-      events.map(e => ({
-        Event: e.event,
-        Agenda: e.agenda,
-        Venue: e.venue,
-        "Date & Time": e.datetime ? new Date(e.datetime).toLocaleString() : "",
-      }))
-    );
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "All Events");
-    XLSX.writeFile(wb, "all_events.xlsx");
-    toast.success('Events exported to Excel!');
-  };
-
-  const handleExportPDF = () => {
-    if (!events.length) return;
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "pt",
-      format: "a4"
-    });
-    const headers = [[
-      "Event", "Agenda", "Venue", "Date & Time"
-    ]];
-    const rows = events.map(e => [
-      e.event,
-      e.agenda,
-      e.venue,
-      e.datetime ? new Date(e.datetime).toLocaleString() : "",
-    ]);
-    try {
-      autoTable(doc, {
-        head: headers,
-        body: rows,
-        startY: 20,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [41, 128, 185] }
-      });
-      doc.save("all_events.pdf");
-      toast.success('Events exported to PDF!');
-    } catch (err) {
-      alert("PDF export failed: " + err.message);
-    }
-  };
-
-  const handleCopyToClipboard = () => {
-    const data = events.map(e => 
-      `${e.event},${e.agenda},${e.venue},${e.datetime ? new Date(e.datetime).toLocaleString() : ""}`
-    ).join('\n');
-    navigator.clipboard.writeText(data);
-    toast.success('Event copied to clipboard!');
-  };
-
-  const handleRefresh = () => {
-    window.location.reload();
-    toast.info('Event refreshed!');
-  };
-
-  const handleShowAddEventForm = () => setShowAddEventForm(true);
-  const handleHideAddEventForm = () => setShowAddEventForm(false);
-
-  // 2. Handler to open Edit modal with event data
-  const openEditEventModal = (event) => {
-    setEditEventForm({
-      id: event.id,
-      event: event.event,
-      agenda: event.agenda,
-      venue: event.venue,
-      date: event.datetime ? event.datetime.split('T')[0] : '',
-      time: event.datetime ? event.datetime.split('T')[1]?.slice(0,5) : '',
-      invitationImage: null,
-      imageUrl: event.imageUrl || '',
-    });
-    setEditFormErrors({});
-    setShowEditEventModal(true);
-  };
-  const closeEditEventModal = () => setShowEditEventModal(false);
-
-  // 3. Edit form change handlers
-  const handleEditEventChange = (e) => {
-    const { name, value, files } = e.target;
-    if (name === 'invitationImage') {
-      setEditEventForm({ ...editEventForm, invitationImage: files[0] });
-    } else {
-      setEditEventForm({ ...editEventForm, [name]: value });
-      setEditFormErrors({ ...editFormErrors, [name]: undefined });
-    }
-  };
-  const handleEditAgendaChange = (event, editor) => {
-    const data = editor.getData();
-    setEditEventForm({ ...editEventForm, agenda: data });
-    setEditFormErrors({ ...editFormErrors, agenda: undefined });
-  };
-
-  // 4. Edit form validation
-  const validateEditForm = () => {
-    const errors = {};
-    if (!editEventForm.event.trim()) errors.event = 'The Event Title field is required.';
-    if (!editEventForm.agenda || !editEventForm.agenda.replace(/<[^>]*>/g, '').trim()) errors.agenda = 'The Agenda field is required.';
-    if (!editEventForm.venue.trim()) errors.venue = 'The Venue field is required.';
-    if (!editEventForm.date.trim()) errors.date = 'The Date field is required.';
-    if (!editEventForm.time.trim()) errors.time = 'The Time field is required.';
-    return errors;
-  };
-
-  // 5. Edit Event API call
-  const handleEditEventSubmit = async (e) => {
-    e.preventDefault();
-    const errors = validateEditForm();
-    if (Object.keys(errors).length > 0) {
-      setEditFormErrors(errors);
-      toast.error(Object.values(errors).join('\n'));
-      setShowEditEventModal(false);
-      return;
-    }
-    setEditLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const uid = localStorage.getItem('uid');
-      const formData = new FormData();
-      formData.append('id', editEventForm.id);
-      formData.append('event_title', editEventForm.event);
-      formData.append('event_description', editEventForm.agenda);
-      formData.append('event_venue', editEventForm.venue);
-      formData.append('event_time', editEventForm.time);
-      formData.append('event_date', editEventForm.date);
-      if (editEventForm.invitationImage) {
-        formData.append('event_image', editEventForm.invitationImage);
-      }
-      await fetch('/api/event/edit', {
-        method: 'POST',
-        headers: {
-          'Client-Service': 'COHAPPRT',
-          'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-          'uid': uid,
-          'token': token,
-          'rurl': 'login.etribes.in',
-          'Authorization': 'Bearer ' + (localStorage.getItem('authToken') || ''),
-          // Do NOT set Content-Type for FormData
-        },
-        credentials: 'include',
-        body: formData,
-      });
-      toast.success('Event updated successfully!');
-      setShowEditEventModal(false);
-      setTimeout(() => toast.dismiss(), 2000);
-      // Refresh events
-      setLoading(true);
-      try {
-        const response = await api.post('/event/index', {}, {
-          headers: {
-            'Client-Service': 'COHAPPRT',
-            'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-            'uid': uid,
-            'token': token,
-            'rurl': 'login.etribes.in',
-            'Content-Type': 'application/json',
-          }
-        });
-        let backendEvents = [];
-        if (Array.isArray(response.data?.data?.event)) {
-          backendEvents = response.data.data.event;
-        } else if (Array.isArray(response.data?.data?.events)) {
-          backendEvents = response.data.data.events;
-        } else if (Array.isArray(response.data?.data)) {
-          backendEvents = response.data.data;
-        } else if (Array.isArray(response.data)) {
-          backendEvents = response.data;
-        } else if (response.data?.data && typeof response.data.data === 'object') {
-          backendEvents = Object.values(response.data.data);
-        } else {
-          backendEvents = [];
-        }
-        const BASE_URL = "https://api.etribes.in";
-        const mappedEvents = backendEvents.map((e, idx) => ({
-          id: e.id || idx,
-          event: e.event_title || e.event || e.title || e.name || "",
-          agenda: e.event_description || e.agenda || e.description || "",
-          venue: e.event_venue || e.venue || e.location || "",
-          datetime: e.event_date && e.event_time
-            ? `${e.event_date}T${e.event_time}`
-            : e.datetime || e.date_time || e.date || "",
-          imageUrl: e.event_image
-            ? (e.event_image.startsWith("http") ? e.event_image : BASE_URL + e.event_image)
-            : (e.image || e.imageUrl || ""),
-        }));
-        setEvents(mappedEvents);
-      } finally {
-        setLoading(false);
-      }
-    } catch (err) {
-      toast.error('Failed to update event');
-      setShowEditEventModal(false);
-    } finally {
-      setEditLoading(false);
-    }
-  };
-
-  // 2. Delete event handler
-  const handleDeleteEvent = async (eventId) => {
-    if (!window.confirm('Are you sure you want to delete this event?')) return;
-    setDeleteLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const uid = localStorage.getItem('uid');
-      await fetch('/api/event/remove', {
-        method: 'POST',
-        headers: {
-          'Client-Service': 'COHAPPRT',
-          'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-          'uid': uid,
-          'token': token,
-          'rurl': 'login.etribes.in',
-          'Content-Type': 'text/plain',
-          'Authorization': 'Bearer ' + (localStorage.getItem('authToken') || ''),
-        },
-        credentials: 'include',
-        body: JSON.stringify({ id: eventId }),
-      });
-      // Optimistically remove the event from the UI
-      setEvents(prevEvents => prevEvents.filter(e => e.id !== eventId));
-      // Optionally, re-fetch in the background for consistency
-      (async () => {
-        try {
-          const response = await api.post('/event/index', {}, {
-            headers: {
-              'Client-Service': 'COHAPPRT',
-              'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-              'uid': uid,
-              'token': token,
-              'rurl': 'login.etribes.in',
-              'Content-Type': 'application/json',
-            }
-          });
-          let backendEvents = [];
-          if (Array.isArray(response.data?.data?.event)) {
-            backendEvents = response.data.data.event;
-          } else if (Array.isArray(response.data?.data?.events)) {
-            backendEvents = response.data.data.events;
-          } else if (Array.isArray(response.data?.data)) {
-            backendEvents = response.data.data;
-          } else if (Array.isArray(response.data)) {
-            backendEvents = response.data;
-          } else if (response.data?.data && typeof response.data.data === 'object') {
-            backendEvents = Object.values(response.data.data);
-          } else {
-            backendEvents = [];
-          }
-          const BASE_URL = "https://api.etribes.in";
-          const mappedEvents = backendEvents.map((e, idx) => ({
-            id: e.id || idx,
-            event: e.event_title || e.event || e.title || e.name || "",
-            agenda: e.event_description || e.agenda || e.description || "",
-            venue: e.event_venue || e.venue || e.location || "",
-            datetime: e.event_date && e.event_time
-              ? `${e.event_date}T${e.event_time}`
-              : e.datetime || e.date_time || e.date || "",
-            imageUrl: e.event_image
-              ? (e.event_image.startsWith("http") ? e.event_image : BASE_URL + e.event_image)
-              : (e.image || e.imageUrl || ""),
-          }));
-          setEvents(mappedEvents);
-        } catch {}
-      })();
-      toast.success('Event deleted successfully!');
-    } catch (err) {
-      toast.error('Failed to delete event.');
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
 
   if (loading) {
     return (
       <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="flex items-center gap-3">
-            <FiRefreshCw className="animate-spin text-indigo-600 text-2xl" />
+            <div className="animate-spin text-indigo-600 text-2xl">⏳</div>
           <p className="text-indigo-700">Loading all events...</p>
           </div>
         </div>
@@ -660,11 +90,17 @@ export default function AllEvents() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-4 py-3 px-2 sm:px-4">
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-orange-600">All Events</h1>
+      <div className="flex flex-col gap-3 sm:gap-4 py-2 sm:py-3 px-2 sm:px-4">
+        {/* Header Section - Enhanced mobile layout */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 md:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 md:gap-4">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600">All Events</h1>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] xs:text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+              <FiCalendar className="text-indigo-600" />
+              <span>Total Events: {events.length}</span>
+            </div>
           </div>
+        </div>
         {showAddEventForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-1" onClick={handleHideAddEventForm}>
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-2 max-h-[98vh] flex flex-col" onClick={e => e.stopPropagation()}>
@@ -713,40 +149,40 @@ export default function AllEvents() {
                     {formErrors.venue && <div className="text-red-600 text-xs mt-1">{formErrors.venue}</div>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                  <div>
+                    <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={addEventForm.date}
-                      onChange={handleAddEventChange}
+                        Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="date"
+                        value={addEventForm.date}
+                        onChange={handleAddEventChange}
                         className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${formErrors.date ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Select date"
-                    />
-                    {formErrors.date && <div className="text-red-600 text-xs mt-1">{formErrors.date}</div>}
-                  </div>
-                  <div>
+                        placeholder="Select date"
+                      />
+                      {formErrors.date && <div className="text-red-600 text-xs mt-1">{formErrors.date}</div>}
+                    </div>
+                    <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Time <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      name="time"
-                      value={addEventForm.time}
-                      onChange={handleAddEventChange}
+                        Time <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        name="time"
+                        value={addEventForm.time}
+                        onChange={handleAddEventChange}
                         className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-400 dark:focus:ring-orange-300 focus:border-transparent transition-colors ${formErrors.time ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Select time"
-                    />
-                    {formErrors.time && <div className="text-red-600 text-xs mt-1">{formErrors.time}</div>}
-                  </div>
+                        placeholder="Select time"
+                      />
+                      {formErrors.time && <div className="text-red-600 text-xs mt-1">{formErrors.time}</div>}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Agenda <span className="text-red-500">*</span>
                     </label>
-                      <div className={`rounded-lg p-1 bg-white dark:bg-gray-700 dark:text-gray-700 ${formErrors.agenda ? 'border border-red-500' : ''}`}>
+                    <div className={`rounded-lg p-1 bg-white dark:bg-gray-700 dark:text-gray-700 ${formErrors.agenda ? 'border border-red-500' : ''}`}>
                       <CKEditor
                         editor={ClassicEditor}
                         data={addEventForm.agenda}
@@ -790,7 +226,7 @@ export default function AllEvents() {
                   >
                     {saveLoading ? (
                       <>
-                        <FiRefreshCw className="animate-spin" />
+                        <div className="animate-spin">⏳</div>
                         Saving...
                       </>
                     ) : (
@@ -807,121 +243,100 @@ export default function AllEvents() {
         )}
         {/* Event Table Below */}
         <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto border border-gray-200 dark:border-gray-700">
-          {/* Header Controls */}
+          {/* Header Controls and Search in Single Line */}
           <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
-            {/* Title and Description */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex items-center gap-2">
-                <FiCalendar className="text-indigo-600 text-xl" />
-                <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">Event Management</span>
+            {/* Title, Description, Search, and Action Buttons in Single Line */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <FiCalendar className="text-indigo-600 text-xl" />
+                  <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">Event Management</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <FiMapPin className="text-indigo-600" />
+                  <span>Manage all events and schedules</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <FiMapPin className="text-indigo-600" />
-                <span>Manage all events and schedules</span>
+              
+              {/* Search and Filter - Enhanced mobile layout */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 md:gap-4">
+                <div className="flex-1 relative">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search events, agenda, or venue..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <FiFilter className="text-gray-400" />
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Filtered: {filtered.length} of {events.length}</span>
+                </div>
               </div>
             </div>
-            {/* Export and Action Buttons */}
-            <div className="flex flex-wrap gap-2 items-center">
-              <button
-                className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
-                onClick={handleExportCSV}
-                title="Export to CSV"
-              >
-                <FiFileText />
-                <span className="hidden sm:inline">CSV</span>
-              </button>
-              <button
-                className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition"
-                onClick={handleExportExcel}
-                title="Export to Excel"
-              >
-                <FiFile />
-                <span className="hidden sm:inline">Excel</span>
-              </button>
-              <button
-                className="flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition"
-                onClick={handleExportPDF}
-                title="Export to PDF"
-              >
-                <FiFile />
-                <span className="hidden sm:inline">PDF</span>
-              </button>
-              <button
-                className="flex items-center gap-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition"
-                onClick={handleCopyToClipboard}
-                title="Copy to Clipboard"
-              >
-                <FiCopy />
-                <span className="hidden sm:inline">Copy</span>
-              </button>
-              <button
-                className="flex items-center gap-1 bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-600 transition"
-                onClick={handleRefresh}
-                title="Refresh Events"
-              >
-                <FiRefreshCw />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
+            
+            {/* Export and Action Buttons - Enhanced mobile layout */}
+            <div className="flex flex-wrap gap-2 sm:gap-3 items-center">
+              <ExportButtons
+                data={events}
+                dataType="events"
+                onRefresh={() => fetchEvents(false)}
+                filename="all_events"
+                title="All Events Report"
+                refreshMessage="Events refreshed successfully!"
+                customConfig={{
+                  headers: ["Event", "Agenda", "Venue", "Date & Time"],
+                  fields: ["event", "agenda", "venue", "datetime"],
+                  fieldMapping: {
+                    "Event": "event",
+                    "Agenda": "agenda",
+                    "Venue": "venue",
+                    "Date & Time": "datetime"
+                  }
+                }}
+              />
               {!showAddEventForm && (
               <button
-                  className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition w-full sm:w-auto justify-center"
+                  className="flex items-center gap-1.5 sm:gap-2 bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-700 transition w-full sm:w-auto justify-center"
                   onClick={handleShowAddEventForm}
               >
-                <FiPlus />
+                <FiPlus size={14} />
                 Add Event
               </button>
               )}
             </div>
           </div>
 
-          {/* Search and Filter */}
-          <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search events, agenda, or venue..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <FiFilter className="text-gray-400" />
-                <span className="text-sm text-gray-600 dark:text-gray-400">Filtered: {filtered.length} of {events.length}</span>
-              </div>
-            </div>
-          </div>
-
           {/* Table - Desktop View */}
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-sm border-collapse">
-              <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 text-gray-700 dark:text-gray-200 sticky top-0 z-10 shadow-sm">
+              <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 text-white sticky top-0 z-10 shadow-sm">
                 <tr className="border-b-2 border-indigo-200 dark:border-indigo-800">
-                  <th className="px-6 py-4 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors" onClick={() => handleSort("event")}>
-                    <div className="flex items-center gap-2">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-[10px] xs:text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors" onClick={() => handleSort("event")} style={{ maxWidth: '300px' }}>
+                    <div className="flex items-center gap-1 sm:gap-2">
                       Event Name {getSortIcon("event")}
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors" onClick={() => handleSort("agenda")}>
-                    <div className="flex items-center gap-2">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-[10px] xs:text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors" onClick={() => handleSort("agenda")}>
+                    <div className="flex items-center gap-1 sm:gap-2">
                       Agenda {getSortIcon("agenda")}
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors" onClick={() => handleSort("venue")}>
-                    <div className="flex items-center gap-2">
-                      <FiMapPin />
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-[10px] xs:text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors" onClick={() => handleSort("venue")}>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <FiMapPin size={12} />
                       Venue {getSortIcon("venue")}
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors" onClick={() => handleSort("datetime")}>
-                    <div className="flex items-center gap-2">
-                      <FiClock />
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-[10px] xs:text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors" onClick={() => handleSort("datetime")}>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <FiClock size={12} />
                       Date & Time {getSortIcon("datetime")}
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-[10px] xs:text-xs font-medium text-white uppercase tracking-wider" style={{ minWidth: '120px', width: '120px' }}>
                     Actions
                   </th>
                 </tr>
@@ -929,56 +344,56 @@ export default function AllEvents() {
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
                 {paginated.map((event, idx) => (
                   <tr key={event.id || idx} className={`border-b border-gray-200 dark:border-gray-700 transition-colors ${idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900/50'} hover:bg-indigo-50 dark:hover:bg-gray-700 hover:shadow-sm`}>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4" style={{ maxWidth: '300px' }}>
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-800 dark:to-purple-900 flex items-center justify-center">
-                            <span className="text-sm font-medium text-white">
+                        <div className="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10">
+                          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-800 dark:to-purple-900 flex items-center justify-center">
+                            <span className="text-xs sm:text-sm font-medium text-white">
                               {event.event.charAt(0).toUpperCase()}
                             </span>
                           </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{event.event}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">Event #{startIdx + idx + 1}</div>
+                        <div className="ml-2 sm:ml-4 min-w-0 flex-1">
+                          <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate pr-2">{event.event}</div>
+                          <div className="text-[10px] xs:text-xs sm:text-sm text-gray-500 dark:text-gray-400">Event #{startIdx + idx + 1}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate" title={event.agenda.replace(/<[^>]+>/g, '')}>
-                        {event.agenda.replace(/<[^>]+>/g, '').slice(0, 50)}...
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
+                      <div className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 max-w-[200px] sm:max-w-xs truncate" title={event.agenda.replace(/<[^>]+>/g, '')}>
+                        {event.agenda.replace(/<[^>]+>/g, '').slice(0, 30)}...
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="flex items-center">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                          <FiMapPin className="mr-1" />
-                          {event.venue}
+                        <span className="inline-flex items-center px-1.5 sm:px-2.5 py-0.5 rounded-full text-[10px] xs:text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                          <FiMapPin className="mr-0.5 sm:mr-1" size={10} />
+                          <span className="truncate max-w-[120px] sm:max-w-none">{event.venue}</span>
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="flex items-center">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                          <FiClock className="mr-1" />
-                          {event.datetime ? new Date(event.datetime).toLocaleString() : "TBD"}
+                        <span className="inline-flex items-center px-1.5 sm:px-2.5 py-0.5 rounded-full text-[10px] xs:text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                          <FiClock className="mr-0.5 sm:mr-1" size={10} />
+                          <span className="truncate max-w-[140px] sm:max-w-none">{event.datetime ? new Date(event.datetime).toLocaleString() : "TBD"}</span>
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center gap-2">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm font-medium" style={{ minWidth: '120px', width: '120px' }}>
+                      <div className="flex items-center justify-center gap-1 sm:gap-2">
                       <button
-                          className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-400 transition-colors" 
+                          className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-400 transition-colors p-1" 
                           onClick={() => openViewEventModal(idx)}
                           title="View Event Details"
                       >
-                          <FiEye size={16} />
+                          <FiEye size={14} />
                         </button>
-                        <button className="text-blue-600 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-400 transition-colors" title="Edit Event" onClick={() => openEditEventModal(event)}>
-                          <FiEdit2 size={16} />
+                        <button className="text-blue-600 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-400 transition-colors p-1" title="Edit Event" onClick={() => openEditEventModal(event)}>
+                          <FiEdit2 size={14} />
                         </button>
-                        <button className="text-red-600 dark:text-red-300 hover:text-red-900 dark:hover:text-red-400 transition-colors" title="Delete Event" onClick={() => handleDeleteEvent(event.id)} disabled={deleteLoading}>
-                          <FiTrash2 size={16} />
+                        <button className="text-red-600 dark:text-red-300 hover:text-red-900 dark:hover:text-red-400 transition-colors p-1" title="Delete Event" onClick={() => handleDeleteEvent(event.id)} disabled={deleteLoading}>
+                          <FiTrash2 size={14} />
                       </button>
                       </div>
                     </td>
@@ -988,79 +403,79 @@ export default function AllEvents() {
             </table>
           </div>
 
-          {/* Mobile Cards View */}
-          <div className="lg:hidden p-4 sm:p-6 space-y-4">
+          {/* Mobile Cards View - Enhanced responsive layout */}
+          <div className="lg:hidden p-2 sm:p-4 md:p-6 space-y-3 sm:space-y-4">
             {paginated.map((event, idx) => (
-              <div key={event.id || idx} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-800 dark:to-purple-900 flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-medium text-white">
+              <div key={event.id || idx} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-2 sm:mb-3">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-800 dark:to-purple-900 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs sm:text-sm font-medium text-white">
                         {event.event.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{event.event}</h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Event #{startIdx + idx + 1}</p>
+                      <h3 className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 truncate pr-2">{event.event}</h3>
+                      <p className="text-[10px] xs:text-xs text-gray-500 dark:text-gray-400">Event #{startIdx + idx + 1}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-2">
                     <button
-                      className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-400 transition-colors p-1" 
+                      className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-400 transition-colors p-1.5" 
                       onClick={() => openViewEventModal(idx)}
                       title="View Event Details"
                     >
-                      <FiEye size={16} />
+                      <FiEye size={14} />
                     </button>
                     <button 
-                      className="text-blue-600 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-400 transition-colors p-1" 
+                      className="text-blue-600 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-400 transition-colors p-1.5" 
                       title="Edit Event" 
                       onClick={() => openEditEventModal(event)}
                     >
-                      <FiEdit2 size={16} />
+                      <FiEdit2 size={14} />
                     </button>
                     <button 
-                      className="text-red-600 dark:text-red-300 hover:text-red-900 dark:hover:text-red-400 transition-colors p-1" 
+                      className="text-red-600 dark:text-red-300 hover:text-red-900 dark:hover:text-red-400 transition-colors p-1.5" 
                       title="Delete Event" 
                       onClick={() => handleDeleteEvent(event.id)} 
                       disabled={deleteLoading}
                     >
-                      <FiTrash2 size={16} />
+                      <FiTrash2 size={14} />
                     </button>
                   </div>
                 </div>
                 
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <FiMapPin className="text-gray-400 flex-shrink-0" size={14} />
+                <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <FiMapPin className="text-gray-400 flex-shrink-0" size={12} />
                     <span className="text-gray-700 dark:text-gray-300 truncate">{event.venue}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <FiClock className="text-gray-400 flex-shrink-0" size={14} />
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <FiClock className="text-gray-400 flex-shrink-0" size={12} />
                     <span className="text-gray-700 dark:text-gray-300">
                       {event.datetime ? new Date(event.datetime).toLocaleString() : "TBD"}
                     </span>
                   </div>
-                  <div className="pt-2">
-                    <p className="text-gray-600 dark:text-gray-400 text-xs line-clamp-2">
-                      {event.agenda.replace(/<[^>]+>/g, '').slice(0, 100)}...
+                  <div className="pt-1.5 sm:pt-2">
+                    <p className="text-gray-600 dark:text-gray-400 text-[10px] xs:text-xs line-clamp-2">
+                      {event.agenda.replace(/<[^>]+>/g, '').slice(0, 80)}...
                     </p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-          {/* Pagination Controls */}
-          <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-700">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-400">
+          {/* Pagination Controls - Enhanced mobile layout */}
+          <div className="p-2 sm:p-4 md:p-6 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-400">
                 <span>Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, filtered.length)} of {filtered.length} results</span>
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-700 dark:text-gray-400">Show</span>
+              <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-400">Show</span>
                 <select
-                    className="border rounded-lg px-3 py-1 text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 text-gray-700 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                    className="border rounded-lg px-2 sm:px-3 py-1 text-xs sm:text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 text-gray-700 focus:ring-2 focus:ring-indigo-400 transition-colors"
                   value={entriesPerPage}
                   onChange={handleEntriesChange}
                 >
@@ -1068,25 +483,25 @@ export default function AllEvents() {
                     <option key={num} value={num}>{num}</option>
                   ))}
                 </select>
-                  <span className="text-sm text-gray-700 dark:text-gray-400">entries</span>
+                  <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-400">entries</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   onClick={handlePrev}
                   disabled={currentPage === 1}
-                className={`px-3 py-1 rounded-lg text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors ${
+                className={`px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors ${
                     currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
                     Previous
                 </button>
-                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                  <span className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200">
                     Page {currentPage} of {totalPages}
                   </span>
                 <button
                   onClick={handleNext}
                   disabled={currentPage === totalPages}
-                className={`px-3 py-1 rounded-lg text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors ${
+                className={`px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors ${
                     currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
@@ -1225,7 +640,7 @@ export default function AllEvents() {
                   >
                     {saveLoading ? (
                       <>
-                        <FiRefreshCw className="animate-spin" size={14} />
+                        <div className="animate-spin">⏳</div>
                         Adding...
                       </>
                     ) : (
@@ -1271,7 +686,7 @@ export default function AllEvents() {
                   <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
                     <div><span className="font-medium text-gray-800 dark:text-gray-100">Event:</span> {paginated[selectedEventIdx]?.event}</div>
                     <div><span className="font-medium text-gray-800 dark:text-gray-100">Venue:</span> {paginated[selectedEventIdx]?.venue}</div>
-                    <div><span className="font-medium text-gray-800 dark:text-gray-100">Date & Time:</span> {paginated[selectedEventIdx]?.datetime && !isNaN(new Date(paginated[selectedEventIdx]?.datetime)) && paginated[selectedEventIdx]?.datetime.includes('T') ? new Date(paginated[selectedEventIdx]?.datetime).toLocaleString() : 'TBD'}</div>
+                    <div><span className="font-medium text-gray-800 dark:text-gray-100">Date & Time:</span> {paginated[selectedEventIdx]?.datetime && new Date(paginated[selectedEventIdx]?.datetime).toLocaleString()}</div>
                   </div>
                 </div>
                 
@@ -1280,7 +695,7 @@ export default function AllEvents() {
                   <div 
                     className="text-sm text-gray-600 dark:text-gray-300"
                     dangerouslySetInnerHTML={{
-                      __html: decodeHtml(paginated[selectedEventIdx]?.agenda || ""),
+                      __html: paginated[selectedEventIdx]?.agenda || "",
                     }}
                   />
                 </div>
@@ -1361,34 +776,34 @@ export default function AllEvents() {
                     {editFormErrors.venue && <div className="text-red-600 text-xs mt-1">{editFormErrors.venue}</div>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                  <div>
+                    <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={editEventForm.date}
-                      onChange={handleEditEventChange}
+                        Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="date"
+                        value={editEventForm.date}
+                        onChange={handleEditEventChange}
                         className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-300 focus:border-transparent transition-colors ${editFormErrors.date ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Select date"
-                    />
-                    {editFormErrors.date && <div className="text-red-600 text-xs mt-1">{editFormErrors.date}</div>}
-                  </div>
-                  <div>
+                        placeholder="Select date"
+                      />
+                      {editFormErrors.date && <div className="text-red-600 text-xs mt-1">{editFormErrors.date}</div>}
+                    </div>
+                    <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Time <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      name="time"
-                      value={editEventForm.time}
-                      onChange={handleEditEventChange}
+                        Time <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        name="time"
+                        value={editEventForm.time}
+                        onChange={handleEditEventChange}
                         className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-300 focus:border-transparent transition-colors ${editFormErrors.time ? 'border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
-                      placeholder="Select time"
-                    />
-                    {editFormErrors.time && <div className="text-red-600 text-xs mt-1">{editFormErrors.time}</div>}
-                  </div>
+                        placeholder="Select time"
+                      />
+                      {editFormErrors.time && <div className="text-red-600 text-xs mt-1">{editFormErrors.time}</div>}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1444,7 +859,7 @@ export default function AllEvents() {
                   >
                     {editLoading ? (
                       <>
-                        <FiRefreshCw className="animate-spin" size={14} />
+                        <div className="animate-spin">⏳</div>
                         Saving...
                       </>
                     ) : (
@@ -1463,4 +878,3 @@ export default function AllEvents() {
     </DashboardLayout>
   );
 }
-

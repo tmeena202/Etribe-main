@@ -315,7 +315,7 @@ export default function UserAdditionalFields() {
                   </p>
                 </div>
                 {/* Fields Display */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 sm:gap-6">
                   {Array.from({ length: 10 }).map((_, i) => {
                     const fieldKey = `additionalField${i + 1}`;
                     const fieldValue = data[fieldKey];
@@ -348,7 +348,7 @@ export default function UserAdditionalFields() {
                   <p className="text-yellow-700 dark:text-yellow-200 text-sm">Configure custom fields for user profiles. At least the first 5 fields are required. Field names must be unique.</p>
                 </div>
                 {/* Form Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 sm:gap-6">
                   {Array.from({ length: 10 }).map((_, i) => {
                     const fieldKey = `additionalField${i + 1}`;
                     const isRequired = i < 5;

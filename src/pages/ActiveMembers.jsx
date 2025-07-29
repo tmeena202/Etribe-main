@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
-import { FiFileText, FiFile, FiEye, FiX, FiUsers, FiSearch, FiRefreshCw, FiAlertCircle, FiCopy, FiDownload } from "react-icons/fi";
+import { FiFileText, FiFile, FiEye, FiX, FiUsers, FiSearch } from "react-icons/fi";
 import api from "../api/axiosConfig";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { toast } from 'react-toastify';
+import ExportButtons from "../utils/ExportButtons";
 
 export default function ActiveMembers() {
   const [members, setMembers] = useState([]);
@@ -19,49 +17,7 @@ export default function ActiveMembers() {
   const [sortDirection, setSortDirection] = useState("asc");
 
   useEffect(() => {
-    const fetchActiveMembers = async (isFirst = false) => {
-      if (isFirst) setLoading(true);
-      // No need to clear error/success with toast
-      try {
-        const token = localStorage.getItem('token');
-        const uid = localStorage.getItem('uid') || '1'; // Fallback to '1' as per cURL
-        console.log('Token:', token);
-        console.log('UID:', uid);
-        if (!token) {
-          toast.error('Please log in to view active members');
-          window.location.href = '/'; // Redirect to login
-          return;
-        }
-        const response = await api.post('/userDetail/active_members', { uid }, {
-          headers: {
-            'token': token,
-            'uid': uid,
-          }
-        });
-        console.log('Active Members Response:', response.data);
-        setMembers(Array.isArray(response.data) ? response.data : response.data.data || []);
-      } catch (err) {
-        console.error('Fetch error:', {
-          message: err.message,
-          status: err.response?.status,
-          data: err.response?.data,
-        });
-        const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch active members';
-        toast.error(errorMessage);
-        if (errorMessage.toLowerCase().includes('token')) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('uid');
-          window.location.href = '/'; // Redirect to login
-        }
-      } finally {
-        if (isFirst) setLoading(false);
-        if (isFirst) setFirstLoad(false);
-      }
-    };
-
     fetchActiveMembers(true); // Initial load
-    // Removed setInterval for auto-refresh
-    // Only call fetchActiveMembers after CRUD operations
   }, []);
 
   // Sorting function
@@ -100,98 +56,44 @@ export default function ActiveMembers() {
     setCurrentPage(1);
   };
 
-  // Export Handlers
-  const handleExportCSV = () => {
-    if (!members.length) return;
-    const headers = [
-      "Name", "Contact", "Email", "Address", "PAN Number", "Aadhar Number", "DL Number", "D.O.B", "Company Name", "Valid Upto"
-    ];
-    const rows = members.map(m => [
-      m.name,
-      m.phone_num,
-      m.email,
-      m.address,
-      m.ad1,
-      m.ad2,
-      m.ad3,
-      m.ad4,
-      m.company_name,
-      m.ad5,
-    ]);
-    let csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "active_members.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleExportExcel = () => {
-    if (!members.length) return;
-    const ws = XLSX.utils.json_to_sheet(
-      members.map(m => ({
-        Name: m.name,
-        Contact: m.phone_num,
-        Email: m.email,
-        Address: m.address,
-        "PAN Number": m.ad1,
-        "Aadhar Number": m.ad2,
-        "DL Number": m.ad3,
-        "D.O.B": m.ad4,
-        "Company Name": m.company_name,
-        "Valid Upto": m.ad5,
-      }))
-    );
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Active Members");
-    XLSX.writeFile(wb, "active_members.xlsx");
-  };
-
-  const handleExportPDF = () => {
-    if (!members.length) return;
-    const doc = new jsPDF({
-      orientation: "portrait", // A4 vertical
-      unit: "pt",
-      format: "a4"
-    });
-    const headers = [[
-      "Name", "Contact", "Email", "Address", "PAN Number", "Aadhar Number", "DL Number", "D.O.B", "Company Name", "Valid Upto"
-    ]];
-    const rows = members.map(m => [
-      m.name,
-      m.phone_num,
-      m.email,
-      m.address,
-      m.ad1,
-      m.ad2,
-      m.ad3,
-      m.ad4,
-      m.company_name,
-      m.ad5,
-    ]);
+  // Fetch function for refresh
+  const fetchActiveMembers = async (isFirst = false) => {
+    if (isFirst) setLoading(true);
     try {
-      autoTable(doc, {
-        head: headers,
-        body: rows,
-        startY: 20,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [41, 128, 185] }
+      const token = localStorage.getItem('token');
+      const uid = localStorage.getItem('uid') || '1';
+      console.log('Token:', token);
+      console.log('UID:', uid);
+      if (!token) {
+        toast.error('Please log in to view active members');
+        window.location.href = '/';
+        return;
+      }
+      const response = await api.post('/userDetail/active_members', { uid }, {
+        headers: {
+          'token': token,
+          'uid': uid,
+        }
       });
-      doc.save("active_members.pdf");
+      console.log('Active Members Response:', response.data);
+      setMembers(Array.isArray(response.data) ? response.data : response.data.data || []);
     } catch (err) {
-      console.error("autoTable failed:", err);
-      toast.error("PDF export failed: " + err.message);
+      console.error('Fetch error:', {
+        message: err.message,
+        status: err.response?.status,
+        data: err.response?.data,
+      });
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch active members';
+      toast.error(errorMessage);
+      if (errorMessage.toLowerCase().includes('token')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('uid');
+        window.location.href = '/';
+      }
+    } finally {
+      if (isFirst) setLoading(false);
+      if (isFirst) setFirstLoad(false);
     }
-  };
-
-  const handleCopyToClipboard = () => {
-    if (!members.length) return;
-    const data = members.map(m => 
-      `${m.name}, ${m.phone_num}, ${m.email}, ${m.address}, ${m.ad1}, ${m.ad2}, ${m.ad3}, ${m.ad4}, ${m.company_name}, ${m.ad5}`
-    ).join('\n');
-    navigator.clipboard.writeText(data);
   };
 
   if (loading && firstLoad) {
@@ -199,8 +101,8 @@ export default function ActiveMembers() {
       <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="flex items-center gap-3">
-            <FiRefreshCw className="animate-spin text-indigo-600 text-2xl" />
-          <p className="text-indigo-700">Loading active members...</p>
+            <div className="animate-spin text-indigo-600 text-2xl">⏳</div>
+            <p className="text-indigo-700">Loading active members...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -222,66 +124,35 @@ export default function ActiveMembers() {
         <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto">
           {/* Controls */}
           <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
-            {/* Search and Info Section */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="relative">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search by name..."
-                  className="w-full sm:w-auto pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  style={{ minWidth: '250px' }}
-                />
+            {/* Search, Info, and Export Buttons in Single Line */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="relative">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by name..."
+                    className="w-full sm:w-auto pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    style={{ minWidth: '250px' }}
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <span className="text-center sm:text-left">Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, totalEntries)} of {totalEntries} entries</span>
+                </div>
               </div>
               
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <span className="text-center sm:text-left">Showing {startIdx + 1} to {Math.min(startIdx + entriesPerPage, totalEntries)} of {totalEntries} entries</span>
-              </div>
-            </div>
-
-            {/* Export Buttons */}
-            <div className="flex flex-wrap gap-2 items-center">
-              <button 
-                className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
-                onClick={() => window.location.reload()}
-                title="Refresh Data"
-              >
-                <FiRefreshCw /> <span className="hidden sm:inline">Refresh</span>
-              </button>
-              
-              <button 
-                className="flex items-center gap-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition"
-                onClick={handleCopyToClipboard}
-                title="Copy to Clipboard"
-              >
-                <FiCopy /> <span className="hidden sm:inline">Copy</span>
-              </button>
-              
-              <button 
-                className="flex items-center gap-1 bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition"
-                onClick={handleExportCSV}
-                title="Export CSV"
-              >
-                <FiDownload /> <span className="hidden sm:inline">CSV</span>
-              </button>
-              
-              <button 
-                className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition"
-                onClick={handleExportExcel}
-                title="Export Excel"
-              >
-                <FiFile /> <span className="hidden sm:inline">Excel</span>
-              </button>
-              
-              <button 
-                className="flex items-center gap-1 bg-rose-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition"
-                onClick={handleExportPDF}
-                title="Export PDF"
-              >
-                <FiFile /> <span className="hidden sm:inline">PDF</span>
-              </button>
+              {/* Export Buttons */}
+              <ExportButtons
+                data={members}
+                dataType="members"
+                onRefresh={() => fetchActiveMembers(false)}
+                filename="active_members"
+                title="Active Members Report"
+                refreshMessage="Active members refreshed successfully!"
+              />
             </div>
           </div>
           

@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
-import { FiPlus, FiFileText, FiFile, FiEye, FiX, FiCalendar, FiMapPin, FiClock, FiSearch, FiFilter, FiDownload, FiCopy, FiEdit2, FiTrash2, FiRefreshCw, FiImage, FiArchive } from "react-icons/fi";
+import { FiPlus, FiFileText, FiFile, FiEye, FiX, FiCalendar, FiMapPin, FiClock, FiSearch, FiFilter, FiEdit2, FiTrash2, FiImage, FiArchive } from "react-icons/fi";
 import api from "../api/axiosConfig";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 import { toast } from 'react-toastify';
+import ExportButtons from "../utils/ExportButtons";
 
 
 // Helper to decode HTML entities
@@ -87,8 +85,8 @@ export default function PastEvents() {
   const [showAddEventForm, setShowAddEventForm] = useState(false);
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      setLoading(true);
+    const fetchEvents = async (isFirst = false) => {
+      if (isFirst) setLoading(true);
       // toast.dismiss();
       try {
         const token = localStorage.getItem('token');
@@ -134,10 +132,10 @@ export default function PastEvents() {
       } catch (err) {
         toast.error('Failed to fetch past events');
       } finally {
-        setLoading(false);
+        if (isFirst) setLoading(false);
       }
     };
-    fetchEvents();
+    fetchEvents(true);
     // Removed setInterval polling
     // Only call fetchEvents after CRUD operations
   }, []);
@@ -292,91 +290,14 @@ export default function PastEvents() {
   const closeViewEventModal = () => setShowViewEventModal(false);
 
   // Export Handlers (CSV, Excel, PDF)
-  const handleExportCSV = () => {
-    if (!events.length) return;
-    const headers = ["Event", "Agenda", "Venue", "Date & Time"];
-    const rows = events.map(e => [
-      e.event,
-      e.agenda,
-      e.venue,
-      e.datetime ? new Date(e.datetime).toLocaleString() : "",
-    ]);
-    let csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "past_events.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Events exported to CSV!');
-  };
 
-  const handleExportExcel = () => {
-    if (!events.length) return;
-    const ws = XLSX.utils.json_to_sheet(
-      events.map(e => ({
-        Event: e.event,
-        Agenda: e.agenda,
-        Venue: e.venue,
-        "Date & Time": e.datetime ? new Date(e.datetime).toLocaleString() : "",
-      }))
-    );
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Past Events");
-    XLSX.writeFile(wb, "past_events.xlsx");
-    toast.success('Events exported to Excel!');
-  };
-
-  const handleExportPDF = () => {
-    if (!events.length) return;
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "pt",
-      format: "a4"
-    });
-    const headers = [[
-      "Event", "Agenda", "Venue", "Date & Time"
-    ]];
-    const rows = events.map(e => [
-      e.event,
-      e.agenda,
-      e.venue,
-      e.datetime ? new Date(e.datetime).toLocaleString() : "",
-    ]);
-    try {
-      autoTable(doc, {
-        head: headers,
-        body: rows,
-        startY: 20,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [41, 128, 185] }
-      });
-      doc.save("past_events.pdf");
-      toast.success('Events exported to PDF!');
-    } catch (err) {
-      alert("PDF export failed: " + err.message);
-    }
-  };
-
-  const handleCopyToClipboard = () => {
-    const data = events.map(e => 
-      `${e.event},${e.agenda},${e.venue},${e.datetime ? new Date(e.datetime).toLocaleString() : ""}`
-    ).join('\n');
-    navigator.clipboard.writeText(data);
-    toast.success('Event copied to clipboard!');
-  };
-
-  const handleRefresh = () => {
-    window.location.reload();
-  };
 
   if (loading) {
     return (
       <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="flex items-center gap-3">
-            <FiRefreshCw className="animate-spin text-indigo-600 text-2xl" />
+            <div className="animate-spin text-indigo-600 text-2xl">⏳</div>
           <p className="text-indigo-700">Loading past events...</p>
           </div>
         </div>
@@ -397,63 +318,62 @@ export default function PastEvents() {
         </div>
 
         <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto border border-gray-200 dark:border-gray-700">
-          {/* Header Controls */}
+          {/* Header Controls and Search in Single Line */}
           <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
-            {/* Title and Description */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex items-center gap-2">
-                <FiArchive className="text-indigo-600 text-xl" />
-                <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">Past Event Management</span>
+            {/* Title, Description, Search, and Action Buttons in Single Line */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <FiArchive className="text-indigo-600 text-xl" />
+                  <span className="text-lg font-semibold text-gray-800 dark:text-gray-100">Past Event Management</span>
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <FiCalendar className="text-indigo-600" />
+                  <span>Manage completed events and history</span>
+                </div>
               </div>
               
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <FiCalendar className="text-indigo-600" />
-                <span>Manage completed events and history</span>
+              {/* Search and Filter */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex-1 relative">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search past events, agenda, or venue..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                    style={{ minWidth: '250px' }}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <FiFilter className="text-gray-400" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Filtered: {filtered.length} of {events.length}</span>
+                </div>
               </div>
             </div>
-
+            
             {/* Export and Action Buttons */}
             <div className="flex flex-wrap gap-2 items-center">
-              <button
-                className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
-                onClick={handleExportCSV}
-                title="Export to CSV"
-              >
-                <FiFileText />
-                <span className="hidden sm:inline">CSV</span>
-              </button>
-              <button
-                className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition"
-                onClick={handleExportExcel}
-                title="Export to Excel"
-              >
-                <FiFile />
-                <span className="hidden sm:inline">Excel</span>
-              </button>
-              <button
-                className="flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition"
-                onClick={handleExportPDF}
-                title="Export to PDF"
-              >
-                <FiFile />
-                <span className="hidden sm:inline">PDF</span>
-              </button>
-              <button
-                className="flex items-center gap-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition"
-                onClick={handleCopyToClipboard}
-                title="Copy to Clipboard"
-              >
-                <FiCopy />
-                <span className="hidden sm:inline">Copy</span>
-              </button>
-              <button
-                className="flex items-center gap-1 bg-indigo-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-600 transition"
-                onClick={handleRefresh}
-                title="Refresh Events"
-              >
-                <FiRefreshCw />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
+              <ExportButtons
+                data={events}
+                dataType="events"
+                onRefresh={() => fetchEvents(false)}
+                filename="past_events"
+                title="Past Events Report"
+                refreshMessage="Past events refreshed successfully!"
+                customConfig={{
+                  headers: ["Event", "Agenda", "Venue", "Date & Time"],
+                  fields: ["event", "agenda", "venue", "datetime"],
+                  fieldMapping: {
+                    "Event": "event",
+                    "Agenda": "agenda",
+                    "Venue": "venue",
+                    "Date & Time": "datetime"
+                  }
+                }}
+              />
               <button
                 className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition w-full sm:w-auto justify-center"
                 onClick={handleShowAddEventForm}
@@ -464,52 +384,32 @@ export default function PastEvents() {
             </div>
           </div>
 
-          {/* Search and Filter */}
-          <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search past events, agenda, or venue..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <FiFilter className="text-gray-400" />
-                <span className="text-sm text-gray-600 dark:text-gray-400">Filtered: {filtered.length} of {events.length}</span>
-              </div>
-            </div>
-          </div>
-
           {/* Table - Desktop View */}
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-sm border-collapse">
-              <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 text-gray-700 dark:text-gray-200 sticky top-0 z-10 shadow-sm">
+              <thead className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 text-white sticky top-0 z-10 shadow-sm">
                 <tr className="border-b-2 border-indigo-200 dark:border-indigo-800">
-                  <th className="p-3 text-left font-semibold border-r border-indigo-200 dark:border-indigo-800 whitespace-nowrap cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors" style={{ minWidth: '150px', width: '150px' }} onClick={() => handleSort('event')}>
+                  <th className="p-3 text-left font-semibold border-r border-indigo-200 dark:border-indigo-800 whitespace-nowrap cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors text-white" style={{ minWidth: '150px', width: '150px' }} onClick={() => handleSort('event')}>
                     <div className="flex items-center gap-1">
                       Event Name {getSortIcon('event')}
                     </div>
                   </th>
-                  <th className="p-3 text-left font-semibold border-r border-indigo-200 dark:border-indigo-800 whitespace-nowrap cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors" style={{ minWidth: '180px', width: '180px' }} onClick={() => handleSort('agenda')}>
+                  <th className="p-3 text-left font-semibold border-r border-indigo-200 dark:border-indigo-800 whitespace-nowrap cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors text-white" style={{ minWidth: '180px', width: '180px' }} onClick={() => handleSort('agenda')}>
                     <div className="flex items-center gap-1">
                       Agenda {getSortIcon('agenda')}
                     </div>
                   </th>
-                  <th className="p-3 text-left font-semibold border-r border-indigo-200 dark:border-indigo-800 whitespace-nowrap cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors" style={{ minWidth: '150px', width: '150px' }} onClick={() => handleSort('venue')}>
+                  <th className="p-3 text-left font-semibold border-r border-indigo-200 dark:border-indigo-800 whitespace-nowrap cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors text-white" style={{ minWidth: '150px', width: '150px' }} onClick={() => handleSort('venue')}>
                     <div className="flex items-center gap-1">
                       <FiMapPin /> Venue {getSortIcon('venue')}
                     </div>
                   </th>
-                  <th className="p-3 text-left font-semibold border-r border-indigo-200 dark:border-indigo-800 whitespace-nowrap cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors" style={{ minWidth: '120px', width: '120px' }} onClick={() => handleSort('datetime')}>
+                  <th className="p-3 text-left font-semibold border-r border-indigo-200 dark:border-indigo-800 whitespace-nowrap cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors text-white" style={{ minWidth: '120px', width: '120px' }} onClick={() => handleSort('datetime')}>
                     <div className="flex items-center gap-1">
                       <FiClock /> Date & Time {getSortIcon('datetime')}
                     </div>
                   </th>
-                  <th className="p-3 text-center font-semibold whitespace-nowrap" style={{ minWidth: '80px', width: '80px' }}>
+                  <th className="p-3 text-center font-semibold whitespace-nowrap text-white" style={{ minWidth: '80px', width: '80px' }}>
                     Actions
                   </th>
                 </tr>
@@ -538,9 +438,9 @@ export default function PastEvents() {
                           {event.datetime ? new Date(event.datetime).toLocaleString() : "TBD"}
                         </span>
                     </td>
-                    <td className="p-3 text-center">
-                      <button className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 p-2 rounded-full hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors" title="View Event" onClick={() => openViewEventModal(idx)}>
-                        <FiEye size={18} />
+                    <td className="p-2 sm:p-3 text-center">
+                      <button className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 p-1.5 sm:p-2 rounded-full hover:bg-indigo-100 dark:hover:bg-gray-700 transition-colors" title="View Event" onClick={() => openViewEventModal(idx)}>
+                        <FiEye size={16} />
                       </button>
                     </td>
                   </tr>
@@ -565,13 +465,13 @@ export default function PastEvents() {
                       <p className="text-xs text-gray-500 dark:text-gray-400">Past Event #{startIdx + idx + 1}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                     <button
-                      className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-400 transition-colors p-1" 
+                      className="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-indigo-400 transition-colors p-1.5" 
                       onClick={() => openViewEventModal(idx)}
                       title="View Event Details"
                     >
-                      <FiEye size={16} />
+                      <FiEye size={14} />
                     </button>
                   </div>
                 </div>
@@ -793,7 +693,7 @@ export default function PastEvents() {
                   >
                     {saveLoading ? (
                       <>
-                        <FiRefreshCw className="animate-spin" size={14} />
+                        <div className="animate-spin">⏳</div>
                         Adding...
                       </>
                     ) : (

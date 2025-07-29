@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
-import { FiEdit2, FiX, FiCalendar, FiFileText, FiFile, FiUsers, FiSearch, FiRefreshCw, FiAlertCircle, FiCopy, FiDownload, FiClock } from "react-icons/fi";
+import { FiEdit2, FiX, FiCalendar, FiFileText, FiFile, FiUsers, FiSearch, FiAlertCircle, FiClock, FiRefreshCw } from "react-icons/fi";
 import api from "../api/axiosConfig";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { toast } from 'react-toastify';
+import ExportButtons from "../utils/ExportButtons";
 
 // Fetch plans for dropdown
 function useMembershipPlans() {
@@ -91,34 +89,7 @@ export default function MembershipExpired() {
   const [sortDirection, setSortDirection] = useState("asc");
 
   useEffect(() => {
-    const fetchExpiredMembers = async (isFirst = false) => {
-      if (isFirst) setLoading(true);
-      setError(null);
-      try {
-        const token = localStorage.getItem('token');
-        const uid = localStorage.getItem('uid');
-        if (!token) {
-          setError('Please log in to view expired members');
-          window.location.href = '/';
-          return;
-        }
-        const response = await api.post('/userDetail/membership_expired', { uid }, {
-          headers: {
-            'token': token,
-            'uid': uid,
-          }
-        });
-        setMembers(Array.isArray(response.data) ? response.data : response.data.data || []);
-      } catch (err) {
-        toast.error('Failed to fetch expired members.');
-      } finally {
-        if (isFirst) setLoading(false);
-        if (isFirst) setFirstLoad(false);
-      }
-    };
     fetchExpiredMembers(true); // Initial load
-    // Removed setInterval for auto-refresh
-    // Only call fetchExpiredMembers after CRUD operations
   }, []);
 
   // Sorting function
@@ -182,6 +153,10 @@ export default function MembershipExpired() {
 
   const handleUpdate = async () => {
     if (!modifyMember) return;
+    
+    // Prevent multiple submissions
+    if (updateLoading) return;
+    
     // Validation
     if (!form.plan) {
       setUpdateError('Please select a membership plan.');
@@ -202,19 +177,29 @@ export default function MembershipExpired() {
       closeModify();
       return;
     }
+    
     setUpdateLoading(true);
     setUpdateError(null);
     setUpdateSuccess(null);
+    
     try {
-      await activateMembership({
+      const result = await activateMembership({
         company_detail_id: modifyMember.company_detail_id || modifyMember.id,
         membership_plan_id: form.plan, // Use the selected plan's ID
         valid_upto: form.validUpto,
       });
-      toast.success('Membership renewed successfully!');
-      setMembers(prevMembers => prevMembers.filter(member => member.id !== modifyMember.id));
-    closeModify();
+      
+      // Check if the API call was successful
+      if (result && (result.status === 'success' || result.message?.toLowerCase().includes('success'))) {
+        toast.success('Membership renewed successfully!');
+        setMembers(prevMembers => prevMembers.filter(member => member.id !== modifyMember.id));
+        closeModify();
+      } else {
+        throw new Error(result?.message || 'Failed to activate membership');
+      }
     } catch (err) {
+      console.error('Membership renewal error:', err);
+      
       if (err.response) {
         const errorMessage = err.response.data?.message || err.response.data?.error || 'Failed to activate membership';
         setUpdateError(errorMessage);
@@ -223,8 +208,8 @@ export default function MembershipExpired() {
         setUpdateError('Network error. Please check your connection.');
         toast.error('Network error. Please check your connection.');
       } else {
-        setUpdateError('Failed to activate membership. Please try again.');
-        toast.error('Failed to renew membership.');
+        setUpdateError(err.message || 'Failed to activate membership. Please try again.');
+        toast.error(err.message || 'Failed to renew membership.');
       }
       closeModify();
     } finally {
@@ -232,97 +217,32 @@ export default function MembershipExpired() {
     }
   };
 
-  const handleCopyToClipboard = () => {
-    if (!members.length) return;
-    const data = members.map(m => 
-      `${m.name}, ${m.phone_num || m.contact}, ${m.email}, ${m.address}, ${m.ad1 || m.pan}, ${m.ad2 || m.aadhar}, ${m.ad3 || m.dl}, ${m.ad4 || m.dob}, ${m.company_name || m.company}, ${m.membershipExpired || m.membership_expired || ""}`
-    ).join('\n');
-    navigator.clipboard.writeText(data);
-  };
-
-  // Export Handlers
-  const handleExportCSV = () => {
-    if (!members.length) return;
-    const headers = [
-      "Name", "Contact", "Email", "Address", "PAN Number", "Aadhar Number", "DL Number", "D.O.B", "Company Name", "Membership Expiry Date"
-    ];
-    const rows = members.map(m => [
-      m.name,
-      m.phone_num || m.contact,
-      m.email,
-      m.address,
-      m.ad1 || m.pan,
-      m.ad2 || m.aadhar,
-      m.ad3 || m.dl,
-      m.ad4 || m.dob,
-      m.company_name || m.company,
-      m.membershipExpired || m.membership_expired || ""
-    ]);
-    let csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "membership_expired.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleExportExcel = () => {
-    if (!members.length) return;
-    const ws = XLSX.utils.json_to_sheet(
-      members.map(m => ({
-        Name: m.name,
-        Contact: m.phone_num || m.contact,
-        Email: m.email,
-        Address: m.address,
-        "PAN Number": m.ad1 || m.pan,
-        "Aadhar Number": m.ad2 || m.aadhar,
-        "DL Number": m.ad3 || m.dl,
-        "D.O.B": m.ad4 || m.dob,
-        "Company Name": m.company_name || m.company,
-        "Membership Expiry Date": m.membershipExpired || m.membership_expired || ""
-      }))
-    );
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Membership Expired");
-    XLSX.writeFile(wb, "membership_expired.xlsx");
-  };
-
-  const handleExportPDF = () => {
-    if (!members.length) return;
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "pt",
-      format: "a4"
-    });
-    const headers = [[
-      "Name", "Contact", "Email", "Address", "PAN Number", "Aadhar Number", "DL Number", "D.O.B", "Company Name", "Membership Expiry Date"
-    ]];
-    const rows = members.map(m => [
-      m.name,
-      m.phone_num || m.contact,
-      m.email,
-      m.address,
-      m.ad1 || m.pan,
-      m.ad2 || m.aadhar,
-      m.ad3 || m.dl,
-      m.ad4 || m.dob,
-      m.company_name || m.company,
-      m.membershipExpired || m.membership_expired || ""
-    ]);
+  // Fetch function for refresh
+  const fetchExpiredMembers = async (isFirst = false) => {
+    if (isFirst) setLoading(true);
+    setError(null);
     try {
-      autoTable(doc, {
-        head: headers,
-        body: rows,
-        startY: 20,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [41, 128, 185] }
+      const token = localStorage.getItem('token');
+      const uid = localStorage.getItem('uid');
+      if (!token) {
+        toast.error('Please log in to view expired members');
+        window.location.href = '/';
+        return;
+      }
+      const response = await api.post('/userDetail/membership_expired', { uid }, {
+        headers: {
+          'token': token,
+          'uid': uid,
+        }
       });
-      doc.save("membership_expired.pdf");
+      setMembers(Array.isArray(response.data) ? response.data : response.data.data || []);
     } catch (err) {
-      console.error("autoTable failed:", err);
-      alert("PDF export failed: " + err.message);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch expired members';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      if (isFirst) setLoading(false);
+      if (isFirst) setFirstLoad(false);
     }
   };
 
@@ -331,7 +251,7 @@ export default function MembershipExpired() {
       <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-800">
           <div className="flex items-center gap-3">
-            <FiRefreshCw className="animate-spin text-indigo-600 text-2xl" />
+            <div className="animate-spin text-indigo-600 text-2xl">⏳</div>
             <p className="text-indigo-700 dark:text-indigo-300">Loading expired members...</p>
           </div>
         </div>
@@ -386,43 +306,30 @@ export default function MembershipExpired() {
             </div>
             
             {/* Export Buttons */}
-            <div className="flex flex-wrap gap-2 items-center">
-              <button 
-                className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
-                onClick={() => window.location.reload()}
-                title="Refresh Data"
-              >
-                <FiRefreshCw /> <span className="hidden sm:inline">Refresh</span>
-              </button>
-              <button 
-                className="flex items-center gap-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition"
-                onClick={handleCopyToClipboard}
-                title="Copy to Clipboard"
-              >
-                <FiCopy /> <span className="hidden sm:inline">Copy</span>
-              </button>
-              <button 
-                className="flex items-center gap-1 bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition"
-                onClick={handleExportCSV}
-                title="Export CSV"
-              >
-                <FiDownload /> <span className="hidden sm:inline">CSV</span>
-              </button>
-              <button 
-                className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition"
-                onClick={handleExportExcel}
-                title="Export Excel"
-              >
-                <FiFile /> <span className="hidden sm:inline">Excel</span>
-              </button>
-              <button 
-                className="flex items-center gap-1 bg-rose-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-rose-600 transition"
-                onClick={handleExportPDF}
-                title="Export PDF"
-              >
-                <FiFile /> <span className="hidden sm:inline">PDF</span>
-              </button>
-            </div>
+            <ExportButtons
+              data={members}
+              dataType="members"
+              onRefresh={() => fetchExpiredMembers(false)}
+              filename="membership_expired"
+              title="Membership Expired Report"
+              refreshMessage="Membership expired data refreshed successfully!"
+              customConfig={{
+                headers: ["Name", "Contact", "Email", "Address", "PAN Number", "Aadhar Number", "DL Number", "D.O.B", "Company Name", "Membership Expiry Date"],
+                fields: ["name", "phone_num", "email", "address", "ad1", "ad2", "ad3", "ad4", "company_name", "membershipExpired"],
+                fieldMapping: {
+                  "Name": "name",
+                  "Contact": "phone_num",
+                  "Email": "email",
+                  "Address": "address",
+                  "PAN Number": "ad1",
+                  "Aadhar Number": "ad2",
+                  "DL Number": "ad3",
+                  "D.O.B": "ad4",
+                  "Company Name": "company_name",
+                  "Membership Expiry Date": "membershipExpired"
+                }
+              }}
+            />
           </div>
           {/* Table */}
           <div className="overflow-x-auto">
@@ -781,7 +688,7 @@ export default function MembershipExpired() {
                   <p className="text-xs sm:text-base text-gray-600 dark:text-gray-400">Update membership for {modifyMember.name || 'Unknown Member'}</p>
                 </div>
               </div>
-              <form className="space-y-6" onSubmit={e => e.preventDefault()}>
+              <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); handleUpdate(); }}>
                 <div>
                   <label className="block text-gray-700 font-semibold mb-2">Membership Plan *</label>
                   <select
@@ -821,7 +728,6 @@ export default function MembershipExpired() {
                     type="submit"
                     disabled={updateLoading}
                     className={`flex-1 flex items-center justify-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-white ${updateLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
-                    onClick={handleUpdate}
                   >
                     {updateLoading ? (
                       <>

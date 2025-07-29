@@ -1,452 +1,68 @@
-import React, { useState, useEffect, useRef } from "react";
+import React from "react";
 import DashboardLayout from "../components/Layout/DashboardLayout";
-import { FiEdit2, FiPlus, FiKey, FiX, FiFileText, FiFile, FiEye, FiRefreshCw, FiTrash2, FiUser, FiMail, FiPhone, FiMapPin, FiShield, FiCheckCircle, FiAlertCircle, FiCopy, FiDownload } from "react-icons/fi";
-import api from "../api/axiosConfig";
-import { toast } from 'react-toastify';
-
-// Role color mapping
-const getRoleColor = (role) => {
-  const roleColors = {
-    "Super Admin": "bg-red-100 text-red-800 border-red-200",
-    "Admin": "bg-purple-100 text-purple-800 border-purple-200",
-    "Manager": "bg-blue-100 text-blue-800 border-blue-200",
-    "Support": "bg-green-100 text-green-800 border-green-200",
-    "Finance": "bg-yellow-100 text-yellow-800 border-yellow-200",
-    "HR": "bg-pink-100 text-pink-800 border-pink-200",
-    "IT": "bg-indigo-100 text-indigo-800 border-indigo-200",
-  };
-  return roleColors[role] || "bg-gray-100 text-gray-800 border-gray-200";
-};
+import { FiEdit2, FiPlus, FiKey, FiX, FiFileText, FiFile, FiEye, FiTrash2, FiUser, FiMail, FiPhone, FiMapPin, FiShield, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
+import ExportButtons from "../utils/ExportButtons";
+import { useAdminAccounts } from "../hooks/useAdminAccounts";
 
 export default function AdminAccounts() {
-  const [systemUsers, setSystemUsers] = useState([]);
-  const [userRoles, setUserRoles] = useState([]);
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [passwordForm, setPasswordForm] = useState({ password: "", confirmPassword: "" });
-  const [addUserForm, setAddUserForm] = useState({
-    role_id: '',
-    pincode: '',
-    country: '',
-    name: "",
-    contact: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    address: "",
-    city: "",
-    district: "",
-    state: "",
-  });
-  const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState("name");
-  const [sortDirection, setSortDirection] = useState("asc");
-  const [countries, setCountries] = useState([]);
-  const [states, setStates] = useState([]);
-  const isCountriesFetched = useRef(false);
-
-  // Fetch roles from API
-  const fetchRoles = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const uid = localStorage.getItem('uid') || '1';
-      
-      if (!token) {
-        toast.error('Please log in to view system users');
-        window.location.href = '/login';
-        return;
-      }
-
-      const response = await api.post('/userRole', {}, {
-        headers: {
-          'token': token,
-          'uid': uid,
-        }
-      });
-
-      console.log('System Users - Roles Response:', response.data);
-      
-      // Handle different response formats
-      let rolesData = [];
-      if (Array.isArray(response.data)) {
-        rolesData = response.data;
-      } else if (response.data?.data && Array.isArray(response.data.data)) {
-        rolesData = response.data.data;
-      } else if (response.data?.roles && Array.isArray(response.data.roles)) {
-        rolesData = response.data.roles;
-      }
-      // Transform data to match expected format (id and name)
-      const transformedRoles = rolesData.map((role, index) => ({
-        id: role.id || role.role_id,
-        name: role.role || role.role_name || role.name || `Role ${index + 1}`
-      }));
-      setUserRoles(transformedRoles);
-      // Update addUserForm role_id if current role_id is not in new list
-      if (addUserForm.role_id && !transformedRoles.some(r => r.id === addUserForm.role_id)) {
-        setAddUserForm(prev => ({ ...prev, role_id: transformedRoles[0]?.id || '' }));
-      }
-    } catch (err) {
-      console.error('Fetch roles error:', err);
-      // Use default roles on error
-      setUserRoles([]); // Clear roles on error
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch system users from API
-  const fetchSystemUsers = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const uid = localStorage.getItem('uid') || '1';
-      if (!token) {
-        toast.error('Please log in to view system users');
-        window.location.href = '/login';
-        return;
-      }
-      const response = await api.post('/userDetail', {}, {
-        headers: {
-          'Client-Service': 'COHAPPRT',
-          'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-          'uid': uid,
-          'token': token,
-          'rurl': 'login.etribes.in',
-          'Content-Type': 'application/json',
-        }
-      });
-      let usersData = [];
-      if (Array.isArray(response.data)) {
-        usersData = response.data;
-      } else if (response.data?.data && Array.isArray(response.data.data)) {
-        usersData = response.data.data;
-      } else if (response.data?.users && Array.isArray(response.data.users)) {
-        usersData = response.data.users;
-      }
-      // Map backend fields to frontend expected fields
-      const mappedUsers = usersData.map(user => ({
-        id: user.id,
-        name: user.name,
-        contact: user.phone_num || user.contact || '',
-        email: user.email,
-        address: user.address,
-        city: user.city,
-        district: user.district,
-        state: user.state,
-        country: user.country,
-        role: user.role_name || user.role || '',
-        status: user.is_active === '1' ? 'active' : 'inactive',
-        profile_image: user.profile_image,
-      }));
-      setSystemUsers(mappedUsers);
-    } catch (err) {
-      toast.error('Failed to fetch system users.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch countries from API
-  const fetchCountries = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      // You may need to use the correct token/header for Authorization
-      const response = await api.post('/common/countries', {}, {
-        headers: {
-          'Client-Service': 'COHAPPRT',
-          'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-          'rurl': 'login.etribes.in',
-          // 'Authorization': 'Bearer ' + token, // Uncomment if needed
-        }
-      });
-      if (response.data && Array.isArray(response.data.data)) {
-        setCountries(response.data.data);
-        console.log('Fetched countries:', response.data.data);
-      }
-    } catch (err) {
-      // Optionally handle error
-    }
-  };
-
-  useEffect(() => {
-    fetchRoles();
-    fetchSystemUsers();
-    if (!isCountriesFetched.current) {
-      fetchCountries();
-      isCountriesFetched.current = true;
-    }
-    const interval = setInterval(() => {
-      fetchRoles();
-      fetchSystemUsers();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Sorting function
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
-    }
-  };
-
-  // Sort data
-  const sortedData = [...systemUsers].sort((a, b) => {
-    const aValue = a[sortField] || "";
-    const bValue = b[sortField] || "";
+  const {
+    // State
+    systemUsers,
+    userRoles,
+    search,
+    setSearch,
+    currentPage,
+    entriesPerPage,
+    showPasswordModal,
+    showAddUserModal,
+    showViewModal,
+    selectedUser,
+    passwordForm,
+    addUserForm,
+    loading,
+    sortField,
+    sortDirection,
+    countries,
+    states,
     
-    if (sortDirection === "asc") {
-      return aValue.toString().localeCompare(bValue.toString());
-    } else {
-      return bValue.toString().localeCompare(aValue.toString());
-    }
-  });
-
-  // Filtered and paginated data
-  const filtered = sortedData.filter(user => {
-    return user.name.toLowerCase().includes(search.toLowerCase()) ||
-           user.email.toLowerCase().includes(search.toLowerCase()) ||
-           user.contact.includes(search) ||
-           user.city.toLowerCase().includes(search.toLowerCase()) ||
-           user.district.toLowerCase().includes(search.toLowerCase()) ||
-           user.state.toLowerCase().includes(search.toLowerCase());
-  });
-  
-  const totalEntries = filtered.length;
-  const totalPages = Math.ceil(totalEntries / entriesPerPage);
-  const startIdx = (currentPage - 1) * entriesPerPage;
-  const paginated = filtered.slice(startIdx, startIdx + entriesPerPage);
-
-  const handlePrev = () => setCurrentPage(p => Math.max(1, p - 1));
-  const handleNext = () => setCurrentPage(p => Math.min(totalPages, p + 1));
-  const handleEntriesChange = e => {
-    setEntriesPerPage(Number(e.target.value));
-    setCurrentPage(1);
-  };
-
-  // Change Password Modal
-  const openPasswordModal = (user) => {
-    setSelectedUser(user);
-    setPasswordForm({ password: "", confirmPassword: "" });
-    setShowPasswordModal(true);
-  };
-  const closePasswordModal = () => setShowPasswordModal(false);
-  const handlePasswordChange = (e) => setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
-  const handlePasswordSave = async (e) => {
-    e.preventDefault();
-    if (passwordForm.password !== passwordForm.confirmPassword) {
-      toast.error("Passwords don't match");
-      return;
-    }
-    try {
-      const token = localStorage.getItem('token');
-      const uid = localStorage.getItem('uid') || (selectedUser && selectedUser.id);
-      if (!token || !uid) {
-        toast.error('Authentication required. Please log in.');
-        return;
-      }
-      const response = await api.post('/userDetail/update_password', {
-        id: selectedUser.id,
-        password: passwordForm.password,
-        confirm_password: passwordForm.confirmPassword
-      }, {
-        headers: {
-          'Client-Service': 'COHAPPRT',
-          'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-          'uid': uid,
-          'token': token,
-          'Content-Type': 'application/json',
-        }
-      });
-      if (response.data?.status === 'success' || response.data?.message?.toLowerCase().includes('success')) {
-        toast.success('Password updated successfully!');
-    setTimeout(() => toast.dismiss(), 3000);
-    setShowPasswordModal(false);
-      } else {
-        toast.error(response.data?.message || 'Failed to update password.');
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to update password.');
-    }
-  };
-
-  // View User Modal
-  const openViewModal = (user) => {
-    setSelectedUser(user);
-    setShowViewModal(true);
-  };
-  const closeViewModal = () => setShowViewModal(false);
-
-  // Delete User
-  const handleDeleteUser = (userId) => {
-    if (window.confirm("Are you sure you want to delete this system user?")) {
-      setSystemUsers(systemUsers.filter(user => user.id !== userId));
-      toast.success("System user deleted successfully!");
-      setTimeout(() => toast.dismiss(), 3000);
-    }
-  };
-
-  // Add System User Modal
-  const openAddUserModal = () => {
-    setAddUserForm({
-      role_id: userRoles[0]?.id || '',
-      pincode: '',
-      country: '',
-      name: "",
-      contact: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      address: "",
-      city: "",
-      district: "",
-      state: "",
-    });
-    setShowAddUserModal(true);
-  };
-  const closeAddUserModal = () => setShowAddUserModal(false);
-  const handleAddUserChange = (e) => setAddUserForm({ ...addUserForm, [e.target.name]: e.target.value });
-  const handleAddUserSubmit = async (e) => {
-    e.preventDefault();
-    if (addUserForm.password !== addUserForm.confirmPassword) {
-      toast.error("Passwords don't match");
-      return;
-    }
-    try {
-      const token = localStorage.getItem('token');
-      const uid = localStorage.getItem('uid') || '1';
-      if (!token) {
-        toast.error('Please log in to add a system user');
-        window.location.href = '/login';
-        return;
-      }
-      const payload = {
-        role_id: addUserForm.role_id,
-        name: addUserForm.name,
-        phone_num: addUserForm.contact,
-        email: addUserForm.email,
-        password: addUserForm.password,
-        confirm_password: addUserForm.confirmPassword,
-        address: addUserForm.address,
-        city: addUserForm.city,
-        district: addUserForm.district,
-        pincode: addUserForm.pincode,
-        country: addUserForm.country,
-        area_id: addUserForm.state, // state id
-      };
-      const response = await api.post('/userDetail/add_user', payload, {
-        headers: {
-          'Client-Service': 'COHAPPRT',
-          'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-          'uid': uid,
-          'token': token,
-          'rurl': 'login.etribes.in',
-          'Content-Type': 'application/json',
-        }
-      });
-      if (response.data?.status === 'success' || response.data?.message?.toLowerCase().includes('success')) {
-        toast.success('System user created successfully!');
-    setShowAddUserModal(false);
-        await fetchSystemUsers();
-      } else {
-        toast.error(response.data?.message || 'Failed to create system user.');
-        setShowAddUserModal(false);
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to create system user.');
-      setShowAddUserModal(false);
-    }
-  };
-
-  // Export functions
-  const handleExportCopy = () => {
-    const tableData = filtered.map(user => 
-      `${user.name}\t${user.contact}\t${user.email}\t${user.address}\t${user.city}\t${user.district}\t${user.state}\t${user.country}`
-    ).join('\n');
+    // Computed values
+    filtered,
+    paginated,
+    totalEntries,
+    totalPages,
+    startIdx,
     
-    const headers = "Name\tContact No.\tEmail Address\tAddress\tCity\tDistrict\tState\tCountry";
-    const fullData = headers + '\n' + tableData;
-    
-    navigator.clipboard.writeText(fullData).then(() => {
-      toast.success("Data copied to clipboard!");
-    });
-  };
+    // Functions
+    fetchSystemUsers,
+    fetchRoles,
+    fetchCountries,
+    fetchStates,
+    handleSort,
+    handlePrev,
+    handleNext,
+    handleEntriesChange,
+    openPasswordModal,
+    closePasswordModal,
+    handlePasswordChange,
+    handlePasswordSave,
+    openViewModal,
+    closeViewModal,
+    handleDeleteUser,
+    openAddUserModal,
+    closeAddUserModal,
+    handleAddUserChange,
+    handleAddUserSubmit,
+    getRoleColor,
+  } = useAdminAccounts();
 
-  const handleExportExcel = () => {
-    // Excel export logic
-    toast.info("Excel export functionality would be implemented here!");
-  };
 
-  const handleExportCSV = () => {
-    const headers = ["Name", "Contact No.", "Email Address", "Address", "City", "District", "State", "Country"];
-    const csvData = filtered.map(user => [
-      user.name,
-      user.contact,
-      user.email,
-      user.address,
-      user.city,
-      user.district,
-      user.state,
-      user.country
-    ]);
-    
-    let csvContent = "data:text/csv;charset=utf-8," + [headers, ...csvData].map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "system_users.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast.success("CSV exported successfully!");
-  };
-
-  const handleExportPDF = () => {
-    // PDF export logic
-    toast.info("PDF export functionality would be implemented here!");
-  };
-
-  // Fetch states when country changes
-  useEffect(() => {
-    if (addUserForm.country) {
-      const fetchStates = async () => {
-        try {
-          const response = await api.post('/common/states', { country: addUserForm.country }, {
-            headers: {
-              'Client-Service': 'COHAPPRT',
-              'Auth-Key': '4F21zrjoAASqz25690Zpqf67UyY',
-              'rurl': 'login.etribes.in',
-              'Content-Type': 'application/json',
-            }
-          });
-          if (response.data && Array.isArray(response.data.data)) {
-            setStates(response.data.data); // [{ id, state }]
-          } else {
-            setStates([]);
-          }
-        } catch (err) {
-          setStates([]);
-        }
-      };
-      fetchStates();
-    } else {
-      setStates([]);
-    }
-  }, [addUserForm.country]);
 
   if (loading) {
     return (
       <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="flex items-center gap-3">
-            <FiRefreshCw className="animate-spin text-indigo-600 text-2xl" />
+            <div className="animate-spin text-indigo-600 text-2xl">⏳</div>
             <p className="text-indigo-700">Loading system users...</p>
           </div>
         </div>
@@ -471,67 +87,63 @@ export default function AdminAccounts() {
         <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 w-full mx-auto">
           {/* Filter and Export Controls */}
           <div className="flex flex-col gap-4 p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
-            {/* Filter Section */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter:</label>
-                <div className="relative">
-            <input
-              type="text"
-                    placeholder="Type to filter..."
-                    className="w-full sm:w-auto pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-                    style={{ minWidth: '200px' }}
-                  />
-                  <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            {/* Filter and Export Buttons in Single Line */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter:</label>
+                  <div className="relative">
+              <input
+                type="text"
+                      placeholder="Type to filter..."
+                      className="w-full sm:w-auto pl-10 pr-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                      style={{ minWidth: '200px' }}
+                    />
+                    <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Show:</label>
+                  <select
+                    className="px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
+                    value={entriesPerPage}
+                    onChange={handleEntriesChange}
+                  >
+                    {[10, 25, 50, 100].map(num => (
+                      <option key={num} value={num}>{num}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Show:</label>
-                <select
-                  className="px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 transition-colors"
-                  value={entriesPerPage}
-                  onChange={handleEntriesChange}
-                >
-                  {[10, 25, 50, 100].map(num => (
-                    <option key={num} value={num}>{num}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Export Buttons */}
-            <div className="flex flex-wrap gap-2 items-center">
-              <button 
-                className="flex items-center gap-1 bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition"
-                onClick={handleExportCopy}
-                title="Copy to Clipboard"
-              >
-                <FiCopy /> <span className="hidden sm:inline">Copy</span>
-              </button>
-              <button 
-                className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition"
-                onClick={handleExportExcel}
-                title="Export to Excel"
-              >
-                <FiFile /> <span className="hidden sm:inline">Excel</span>
-              </button>
-              <button 
-                className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
-                onClick={handleExportCSV}
-                title="Export to CSV"
-              >
-                <FiDownload /> <span className="hidden sm:inline">CSV</span>
-              </button>
-              <button
-                className="flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition"
-                onClick={handleExportPDF}
-                title="Export to PDF"
-              >
-                <FiFile /> <span className="hidden sm:inline">PDF</span>
-              </button>
+              {/* Export Buttons */}
+              <ExportButtons
+                data={filtered}
+                dataType="users"
+                onRefresh={() => fetchSystemUsers(false)}
+                filename="system_users"
+                title="System Users Report"
+                refreshMessage="System users refreshed successfully!"
+                customConfig={{
+                  headers: ["Name", "Contact No.", "Email Address", "Address", "City", "District", "State", "Country", "Role", "Status"],
+                  fields: ["name", "contact", "email", "address", "city", "district", "state", "country", "role", "status"],
+                  fieldMapping: {
+                    "Name": "name",
+                    "Contact No.": "contact",
+                    "Email Address": "email",
+                    "Address": "address",
+                    "City": "city",
+                    "District": "district",
+                    "State": "state",
+                    "Country": "country",
+                    "Role": "role",
+                    "Status": "status"
+                  }
+                }}
+              />
             </div>
           </div>
 
@@ -920,32 +532,32 @@ export default function AdminAccounts() {
         {/* Enhanced Add System User Modal */}
         {showAddUserModal && (
           <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black bg-opacity-50 p-2 sm:p-4 overflow-y-auto">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8 w-full max-w-sm sm:max-w-2xl relative my-4 sm:my-0">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-3 sm:p-4 lg:p-6 w-full max-w-sm sm:max-w-2xl relative my-2 sm:my-0">
               <button
-                className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-red-500 transition-colors z-10"
+                className="absolute top-2 right-2 sm:top-3 sm:right-3 text-gray-400 hover:text-red-500 transition-colors z-10"
                 onClick={closeAddUserModal}
                 title="Close"
               >
-                <FiX size={20} className="sm:w-6 sm:h-6" />
+                <FiX size={18} className="sm:w-5 sm:h-5" />
               </button>
-              <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-5 pr-10 sm:pr-0">
-                <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-semibold">
-                  <FiPlus size={16} className="sm:w-6 sm:h-6" />
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 pr-8 sm:pr-0">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-semibold">
+                  <FiPlus size={12} className="sm:w-4 sm:h-4" />
                 </div>
                 <div>
-                  <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800 dark:text-gray-100">Add System User</h2>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Create a new system user account</p>
+                  <h2 className="text-sm sm:text-base lg:text-lg font-bold text-gray-800 dark:text-gray-100">Add System User</h2>
+                  <p className="text-xs text-gray-600 dark:text-gray-300">Create a new system user account</p>
                 </div>
               </div>
               
-              <form className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-5" onSubmit={handleAddUserSubmit}>
+              <form className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3" onSubmit={handleAddUserSubmit}>
                 <div className="md:col-span-2">
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">User Role *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">User Role *</label>
                   <select
                     name="role_id"
                     value={addUserForm.role_id}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     required
                   >
                     <option value="">Select Role</option>
@@ -956,124 +568,124 @@ export default function AdminAccounts() {
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Full Name *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Full Name *</label>
                   <input
                     type="text"
                     name="name"
                     value={addUserForm.name}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     placeholder="Enter full name"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Contact Number *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Contact Number *</label>
                   <input
                     type="tel"
                     name="contact"
                     value={addUserForm.contact}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     placeholder="Enter contact number"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Email Address *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Email Address *</label>
                   <input
                     type="email"
                     name="email"
                     value={addUserForm.email}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     placeholder="Enter email address"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Password *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Password *</label>
                   <input
                     type="password"
                     name="password"
                     value={addUserForm.password}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     placeholder="Enter password"
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Confirm Password *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Confirm Password *</label>
                   <input
                     type="password"
                     name="confirmPassword"
                     value={addUserForm.confirmPassword}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     placeholder="Confirm password"
                     required
                   />
                 </div>
                 
                 <div className="md:col-span-2">
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Address</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Address</label>
                   <input
                     type="text"
                     name="address"
                     value={addUserForm.address}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     placeholder="Enter address"
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">City</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">City</label>
                   <input
                     type="text"
                     name="city"
                     value={addUserForm.city}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     placeholder="Enter city"
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">District</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">District</label>
                   <input
                     type="text"
                     name="district"
                     value={addUserForm.district}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     placeholder="Enter district"
                   />
                 </div>
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Pincode</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Pincode</label>
                   <input
                     type="text"
                     name="pincode"
                     value={addUserForm.pincode}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     placeholder="Enter Pincode"
                   />
                 </div>
                 
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">Country *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Country *</label>
                   <select
                     name="country"
                     value={addUserForm.country || ''}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     required
                   >
                     <option value="">Select Country</option>
@@ -1083,12 +695,12 @@ export default function AdminAccounts() {
                   </select>
                 </div>
                 <div>
-                  <label className="font-medium text-gray-700 dark:text-gray-300 text-sm sm:text-base">State *</label>
+                  <label className="font-medium text-gray-700 dark:text-gray-300 text-xs sm:text-sm">State *</label>
                   <select
                     name="state"
                     value={addUserForm.state || ''}
                     onChange={handleAddUserChange}
-                    className="w-full px-2 sm:px-4 py-2 sm:py-3 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-sm sm:text-base"
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-colors text-xs sm:text-sm"
                     required
                   >
                     <option value="">Select State</option>
@@ -1098,17 +710,17 @@ export default function AdminAccounts() {
                   </select>
                 </div>
                 
-                <div className="md:col-span-2 flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-4 sm:mt-5 pt-4 sm:pt-5 border-t border-gray-200 dark:border-gray-600">
+                <div className="md:col-span-2 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-200 dark:border-gray-600">
                   <button
                     type="button"
-                    className="px-6 py-2.5 rounded-lg font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors text-sm sm:text-base"
+                    className="px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors text-xs sm:text-sm"
                     onClick={closeAddUserModal}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors text-sm sm:text-base"
+                    className="px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors text-xs sm:text-sm"
                   >
                     Create User
                   </button>

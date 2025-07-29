@@ -182,11 +182,11 @@ export default function TopBar() {
   };
 
   return (
-    <header className="flex items-center justify-between bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow px-6 py-3 mb-8 rounded-xl min-h-[60px]">
+    <header className="flex items-center justify-between bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow px-6 py-3 mb-8 rounded-xl">
       <div className="font-bold text-xl text-gray-800 dark:text-gray-100">Dashboard Overview</div>
       <div className="flex items-center gap-4">
         <button
-          className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none flex items-center justify-center"
+          className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
           title="Toggle theme"
           onClick={toggleTheme}
         >
@@ -196,7 +196,7 @@ export default function TopBar() {
         <div className="relative" ref={notificationsRef}>
           <button
             onClick={() => setNotificationsOpen((prev) => !prev)}
-            className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none relative flex items-center justify-center"
+            className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none relative"
           >
             <FiBell size={20} />
             {unreadCount > 0 && (
@@ -260,13 +260,11 @@ export default function TopBar() {
         </div>
         <div className="h-8 w-px bg-gray-200 dark:bg-gray-700"></div>
         <div className="flex items-center gap-3">
-          <div className="flex-shrink-0 flex items-center justify-center">
+          <div>
             {groupLogo ? (
-              <img src={groupLogo} alt="Group Logo" className="h-8 w-8 rounded-full object-cover border border-gray-300 dark:border-gray-700 shadow-sm" />
+              <img src={groupLogo} alt="Group Logo" className="h-8 w-8 rounded-full object-cover border border-gray-300 dark:border-gray-700" />
             ) : (
-              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center border border-gray-300 dark:border-gray-700 shadow-sm">
-                <FiUser className="text-blue-500 dark:text-blue-300" size={16} />
-              </div>
+            <FiUser className="text-blue-500 dark:text-blue-300" size={20} />
             )}
           </div>
           <div className="hidden sm:block text-right">
